@@ -7,6 +7,6 @@ type Storage interface {
 
 func NewStorage() Storage {
 	return &memStorage{
-		storage: make(map[string]string, 0),
+		storage: make(map[string]string),
 	}
 }

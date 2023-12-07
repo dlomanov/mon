@@ -24,7 +24,7 @@ func HandleCounter(metric metrics.Metric, db storage.Storage) error {
 	}
 
 	old, ok := db.Get(metric.Key())
-	if ok != true {
+	if !ok {
 		db.Set(metric.Key(), metric.Value)
 		return nil
 	}
