@@ -14,11 +14,11 @@ const (
 )
 
 const (
-	InvalidMetricPath     apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_PATH"
-	InvalidMetricType     apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_TYPE"
-	InvalidMetricName     apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_NAME"
-	InvalidMetricValue    apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_VALUE"
-	UnsupportedMetricType apperrors.Code = "ERR_INTERNAL_UNSUPPORTED_METRIC_TYPE"
+	ErrInvalidMetricPath     apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_PATH"
+	ErrInvalidMetricType     apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_TYPE"
+	ErrInvalidMetricName     apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_NAME"
+	ErrInvalidMetricValue    apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_VALUE"
+	ErrUnsupportedMetricType apperrors.Code = "ERR_INTERNAL_UNSUPPORTED_METRIC_TYPE"
 )
 
 func Metric(path string) (metric metrics.Metric, err error) {
@@ -40,25 +40,25 @@ func Metric(path string) (metric metrics.Metric, err error) {
 		case 2:
 			raw.value = v
 		default:
-			err = InvalidMetricPath.New("expected %d path values, but received %d", fieldCount, len(values))
+			err = ErrInvalidMetricPath.New("expected %d path values, but received %d", fieldCount, len(values))
 		}
 	}
 
 	t, ok := metrics.ParseMetricType(raw.metricType)
 	if !ok {
-		err = InvalidMetricType.New("unknown metric type %s", raw.metricType)
+		err = ErrInvalidMetricType.New("unknown metric type %s", raw.metricType)
 		return
 	}
 	metric.Type = t
 
 	if raw.name == "" {
-		err = InvalidMetricName.New("empty metric name")
+		err = ErrInvalidMetricName.New("empty metric name")
 		return
 	}
 	metric.Name = raw.name
 
 	if raw.value == "" {
-		err = InvalidMetricValue.New("empty value")
+		err = ErrInvalidMetricValue.New("empty value")
 		return
 	}
 
@@ -74,7 +74,7 @@ func Metric(path string) (metric metrics.Metric, err error) {
 		return
 	}
 
-	err = InvalidMetricValue.New("invalid value type for %s metric", metric.Type)
+	err = ErrInvalidMetricValue.New("invalid value type for %s metric", metric.Type)
 	return
 }
 
@@ -85,7 +85,7 @@ func parseValue(t metrics.MetricType, rawValue string) (value any, err error) {
 	case metrics.MetricCounter:
 		value, err = strconv.ParseInt(rawValue, 10, 64)
 	default:
-		err = UnsupportedMetricType.New("unsupported %s metric", t)
+		err = ErrUnsupportedMetricType.New("unsupported %s metric", t)
 	}
 	return
 }

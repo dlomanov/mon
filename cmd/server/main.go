@@ -20,7 +20,7 @@ func run() error {
 	mux := http.NewServeMux()
 
 	// /update/<type>/<name>/<value>
-	mux.HandleFunc("/update/", handlers.UpdateHandler("/update/", db))
+	mux.HandleFunc("/update/", handlers.UpdateHandler(db))
 
 	return http.ListenAndServe(":"+port, mux)
 }

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/dlomanov/mon/internal/handlers/apperrors"
 	bind "github.com/dlomanov/mon/internal/handlers/binding"
-	metrics "github.com/dlomanov/mon/internal/handlers/metrics"
+	"github.com/dlomanov/mon/internal/handlers/metrics"
 	"github.com/dlomanov/mon/internal/storage"
 	"net/http"
 	"strconv"
@@ -12,8 +12,14 @@ import (
 )
 
 // UpdateHandler path: /update/<type>/<name>/<value>
-func UpdateHandler(path string, db storage.Storage) http.HandlerFunc {
+func UpdateHandler(db storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		const pathPrefix = "/update/"
+
+		if !strings.HasPrefix(r.RequestURI, pathPrefix) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusNotFound)
@@ -22,7 +28,7 @@ func UpdateHandler(path string, db storage.Storage) http.HandlerFunc {
 
 		var apperr apperrors.AppError
 
-		pathValues := strings.TrimLeft(r.RequestURI, path)
+		pathValues, _ := strings.CutPrefix(r.RequestURI, pathPrefix)
 		metric, err := bind.Metric(pathValues)
 		if errors.As(err, &apperr) {
 			w.WriteHeader(statusCode(apperr))
@@ -58,17 +64,17 @@ func UpdateHandler(path string, db storage.Storage) http.HandlerFunc {
 
 func statusCode(a apperrors.AppError) int {
 	switch a.Code {
-	case bind.InvalidMetricPath:
+	case bind.ErrInvalidMetricPath:
 		return http.StatusNotFound
-	case bind.InvalidMetricType:
+	case bind.ErrInvalidMetricType:
 		return http.StatusBadRequest
-	case bind.InvalidMetricName:
+	case bind.ErrInvalidMetricName:
 		return http.StatusNotFound
-	case bind.InvalidMetricValue:
+	case bind.ErrInvalidMetricValue:
 		return http.StatusBadRequest
-	case bind.UnsupportedMetricType:
+	case bind.ErrUnsupportedMetricType:
 		return http.StatusInternalServerError
-	case InvalidMetricValueType:
+	case ErrInvalidMetricValueType:
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError
@@ -76,13 +82,13 @@ func statusCode(a apperrors.AppError) int {
 }
 
 const (
-	InvalidMetricValueType apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_VALUE_TYPE"
+	ErrInvalidMetricValueType apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_VALUE_TYPE"
 )
 
 func HandleGauge(metric metrics.Metric, db storage.Storage) error {
 	v, ok := metric.Value.(float64)
 	if !ok {
-		return InvalidMetricValueType.New("invalid value type for %s metric", metric.Type)
+		return ErrInvalidMetricValueType.New("invalid value type for %s metric", metric.Type)
 	}
 
 	valueString := strconv.FormatFloat(v, 'f', -1, 64)
@@ -93,7 +99,7 @@ func HandleGauge(metric metrics.Metric, db storage.Storage) error {
 func HandleCounter(metric metrics.Metric, db storage.Storage) error {
 	v, ok := metric.Value.(int64)
 	if !ok {
-		return InvalidMetricValueType.New("invalid value type for %s metric", metric.Type)
+		return ErrInvalidMetricValueType.New("invalid value type for %s metric", metric.Type)
 	}
 
 	oldString, ok := db.Get(metric.Key())
