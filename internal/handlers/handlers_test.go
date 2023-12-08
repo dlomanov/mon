@@ -93,6 +93,7 @@ func TestUpdateHandler(t *testing.T) {
 
 			h.ServeHTTP(w, r)
 			res := w.Result()
+			defer func() { _ = res.Body.Close() }()
 
 			assert.Equal(t, tt.want.code, res.StatusCode, "Unexpected status code")
 		})
