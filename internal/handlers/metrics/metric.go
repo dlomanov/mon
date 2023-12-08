@@ -3,11 +3,11 @@ package metrics
 import "fmt"
 
 type Metric struct {
-	Kind  Kind
+	Type  MetricType
 	Name  string
-	Value string
+	Value any
 }
 
 func (m Metric) Key() string {
-	return fmt.Sprintf("%s_%s", m.Kind, m.Name)
+	return fmt.Sprintf("%s_%s", m.Type, m.Name)
 }
