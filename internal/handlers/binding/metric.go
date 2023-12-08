@@ -69,7 +69,7 @@ func Metric(path string) (metric metrics.Metric, err error) {
 	}
 
 	var appError apperrors.AppError
-	if !errors.As(e, &appError) {
+	if errors.As(e, &appError) {
 		err = appError
 		return
 	}
