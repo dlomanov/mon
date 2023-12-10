@@ -4,10 +4,10 @@ import (
 	"errors"
 	"github.com/dlomanov/mon/internal/handlers/apperrors"
 	bind "github.com/dlomanov/mon/internal/handlers/binding"
-	"github.com/dlomanov/mon/internal/handlers/metrics"
+	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
+	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
 	"github.com/dlomanov/mon/internal/storage"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -40,11 +40,11 @@ func UpdateHandler(db storage.Storage) http.HandlerFunc {
 		}
 
 		err = nil
-		switch metric.Type {
-		case metrics.MetricGauge:
-			err = HandleGauge(metric, db)
-		case metrics.MetricCounter:
-			err = HandleCounter(metric, db)
+		switch v := metric.(type) {
+		case gauge.Metric:
+			err = HandleGauge(v, db)
+		case counter.Metric:
+			err = HandleCounter(v, db)
 		default:
 			w.WriteHeader(http.StatusNotImplemented)
 			return
@@ -85,35 +85,24 @@ const (
 	ErrInvalidMetricValueType apperrors.Code = "ERR_VALIDATION_INVALID_METRIC_VALUE_TYPE"
 )
 
-func HandleGauge(metric metrics.Metric, db storage.Storage) error {
-	v, ok := metric.Value.(float64)
-	if !ok {
-		return ErrInvalidMetricValueType.New("invalid value type for %s metric", metric.Type)
-	}
-
-	valueString := strconv.FormatFloat(v, 'f', -1, 64)
-	db.Set(metric.Key(), valueString)
+func HandleGauge(metric gauge.Metric, db storage.Storage) error {
+	db.Set(metric.Key(), metric.StringValue())
 	return nil
 }
 
-func HandleCounter(metric metrics.Metric, db storage.Storage) error {
-	v, ok := metric.Value.(int64)
+func HandleCounter(metric counter.Metric, db storage.Storage) (err error) {
+	value, ok := db.Get(metric.Key())
 	if !ok {
-		return ErrInvalidMetricValueType.New("invalid value type for %s metric", metric.Type)
+		db.Set(metric.Key(), metric.StringValue())
+		return
 	}
 
-	oldString, ok := db.Get(metric.Key())
-	if !ok {
-		db.Set(metric.Key(), strconv.FormatInt(v, 10))
-		return nil
-	}
-
-	old, err := strconv.ParseInt(oldString, 10, 64)
+	old, err := metric.With(value)
 	if err != nil {
-		return err
+		return
 	}
 
-	newValue := v + old
-	db.Set(metric.Key(), strconv.FormatInt(newValue, 10))
-	return nil
+	metric.Value = metric.Value + old.Value
+	db.Set(metric.Key(), metric.StringValue())
+	return
 }

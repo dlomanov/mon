@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"github.com/dlomanov/mon/internal/handlers/apperrors"
-	"github.com/dlomanov/mon/internal/handlers/metrics"
+	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
+	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
 	"github.com/dlomanov/mon/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -102,7 +103,7 @@ func TestUpdateHandler(t *testing.T) {
 
 func TestHandleGauge(t *testing.T) {
 	type args struct {
-		values []metrics.Metric
+		values []gauge.Metric
 	}
 	type want struct {
 		successExpected bool
@@ -117,14 +118,12 @@ func TestHandleGauge(t *testing.T) {
 		{
 			name: "success case",
 			args: args{
-				values: []metrics.Metric{
+				values: []gauge.Metric{
 					{
-						Type:  metrics.MetricGauge,
 						Name:  "metric-key",
 						Value: 1.0001,
 					},
 					{
-						Type:  metrics.MetricGauge,
 						Name:  "metric-key",
 						Value: 2.0001,
 					},
@@ -133,22 +132,6 @@ func TestHandleGauge(t *testing.T) {
 			want: want{
 				successExpected: true,
 				expectedValue:   "2.0001",
-			},
-		},
-		{
-			name: "invalid value case",
-			args: args{
-				values: []metrics.Metric{
-					{
-						Type:  metrics.MetricGauge,
-						Name:  "metric-key",
-						Value: int64(1.0),
-					},
-				},
-			},
-			want: want{
-				successExpected: false,
-				errCode:         ErrInvalidMetricValueType,
 			},
 		},
 	}
@@ -185,7 +168,7 @@ func TestHandleGauge(t *testing.T) {
 
 func TestHandleCounter(t *testing.T) {
 	type args struct {
-		values []metrics.Metric
+		values []counter.Metric
 	}
 	type want struct {
 		successExpected bool
@@ -200,14 +183,12 @@ func TestHandleCounter(t *testing.T) {
 		{
 			name: "success case",
 			args: args{
-				values: []metrics.Metric{
+				values: []counter.Metric{
 					{
-						Type:  metrics.MetricCounter,
 						Name:  "metric-key",
 						Value: int64(1),
 					},
 					{
-						Type:  metrics.MetricCounter,
 						Name:  "metric-key",
 						Value: int64(9),
 					},
@@ -216,22 +197,6 @@ func TestHandleCounter(t *testing.T) {
 			want: want{
 				successExpected: true,
 				expectedValue:   "10",
-			},
-		},
-		{
-			name: "invalid value case",
-			args: args{
-				values: []metrics.Metric{
-					{
-						Type:  metrics.MetricCounter,
-						Name:  "metric-key",
-						Value: float64(1),
-					},
-				},
-			},
-			want: want{
-				successExpected: false,
-				errCode:         ErrInvalidMetricValueType,
 			},
 		},
 	}

@@ -4,7 +4,8 @@ import (
 	"errors"
 	"github.com/dlomanov/mon/internal/handlers/apperrors"
 	"github.com/dlomanov/mon/internal/handlers/metrics"
-	"strconv"
+	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
+	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
 	"strings"
 )
 
@@ -44,27 +45,23 @@ func Metric(path string) (metric metrics.Metric, err error) {
 		}
 	}
 
-	t, ok := metrics.ParseMetricType(raw.metricType)
+	metricType, ok := metrics.ParseMetricType(raw.metricType)
 	if !ok {
 		err = ErrInvalidMetricType.New("unknown metric type %s", raw.metricType)
 		return
 	}
-	metric.Type = t
-
 	if raw.name == "" {
 		err = ErrInvalidMetricName.New("empty metric name")
 		return
 	}
-	metric.Name = raw.name
 
 	if raw.value == "" {
 		err = ErrInvalidMetricValue.New("empty value")
 		return
 	}
 
-	v, e := parseValue(metric.Type, raw.value)
+	metric, e := createMetric(metricType, raw.name, raw.value)
 	if e == nil {
-		metric.Value = v
 		return
 	}
 
@@ -74,18 +71,22 @@ func Metric(path string) (metric metrics.Metric, err error) {
 		return
 	}
 
-	err = ErrInvalidMetricValue.New("invalid value type for %s metric", metric.Type)
+	err = ErrInvalidMetricValue.New("invalid value type for %s metric", metricType)
 	return
 }
 
-func parseValue(t metrics.MetricType, rawValue string) (value any, err error) {
-	switch t {
+func createMetric(
+	metricType metrics.MetricType,
+	metricName string,
+	metricValue string,
+) (metric metrics.Metric, err error) {
+	switch metricType {
 	case metrics.MetricGauge:
-		value, err = strconv.ParseFloat(rawValue, 64)
+		metric, err = gauge.NewMetric(metricName, metricValue)
 	case metrics.MetricCounter:
-		value, err = strconv.ParseInt(rawValue, 10, 64)
+		metric, err = counter.NewMetric(metricName, metricValue)
 	default:
-		err = ErrUnsupportedMetricType.New("unsupported %s metric", t)
+		err = ErrUnsupportedMetricType.New("unsupported %s metric")
 	}
 	return
 }
