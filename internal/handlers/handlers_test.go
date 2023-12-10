@@ -6,6 +6,7 @@ import (
 	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
 	"github.com/dlomanov/mon/internal/storage"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -94,7 +95,7 @@ func TestUpdateHandler(t *testing.T) {
 
 			h.ServeHTTP(w, r)
 			res := w.Result()
-			defer func() { _ = res.Body.Close() }()
+			defer func(body io.Closer) { _ = body.Close() }(res.Body)
 
 			assert.Equal(t, tt.want.code, res.StatusCode, "Unexpected status code")
 		})
