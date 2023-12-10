@@ -15,6 +15,13 @@ type Metric struct {
 	Value int64
 }
 
+func (m Metric) Deconstruct() (mtype, name, value string) {
+	mtype = string(metrics.MetricCounter)
+	name = m.Name
+	value = m.StringValue()
+	return
+}
+
 func (m Metric) StringValue() string {
 	return strconv.FormatInt(m.Value, 10)
 }

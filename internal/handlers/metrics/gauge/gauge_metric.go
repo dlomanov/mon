@@ -15,6 +15,13 @@ type Metric struct {
 	Value float64
 }
 
+func (m Metric) Deconstruct() (mtype, name, value string) {
+	mtype = string(metrics.MetricGauge)
+	name = m.Name
+	value = m.StringValue()
+	return
+}
+
 func (m Metric) StringValue() string {
 	return strconv.FormatFloat(m.Value, 'f', -1, 64)
 }
