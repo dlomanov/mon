@@ -5,13 +5,14 @@ import (
 	"github.com/dlomanov/mon/internal/handlers/metrics"
 	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
 	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
+	"io"
 	"log"
 	"net/http"
 	"strings"
 )
 
 const (
-	baseUrl = "http://localhost:8080"
+	baseURL = "http://localhost:8080"
 )
 
 type Mon struct {
@@ -57,8 +58,11 @@ func (m *Mon) ReportMetrics() {
 	for key, v := range m.metrics {
 		mtype, name, value := v.Deconstruct()
 
-		requestUrl := fmt.Sprintf("%s/update/%s/%s/%s", baseUrl, mtype, name, value)
-		_, err := http.Post(requestUrl, "text/plain", nil)
+		requestURL := fmt.Sprintf("%s/update/%s/%s/%s", baseURL, mtype, name, value)
+		res, err := http.Post(requestURL, "text/plain", nil)
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+
 		if err != nil {
 			sb.WriteString(fmt.Sprintf(" - %s: failed:\n   %v\n", key, err))
 		} else {
