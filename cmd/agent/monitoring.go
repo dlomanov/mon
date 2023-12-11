@@ -26,18 +26,19 @@ func NewMon(logger *log.Logger) Mon {
 	}
 }
 
-func (m *Mon) UpdateGauge(metric gauge.Metric) {
-	key := metric.Key()
-	m.metrics[key] = metric
+func (m *Mon) UpdateGauge(name string, value float64) {
+	v := gauge.Metric{Name: name, Value: value}
+	m.metrics[v.Key()] = v
 }
 
-func (m *Mon) UpdateCounter(metric counter.Metric) {
-	key := metric.Key()
+func (m *Mon) UpdateCounter(name string, value int64) {
+	v := counter.Metric{Name: name, Value: value}
+	key := v.Key()
 	old, ok := m.metrics[key]
 	if ok {
-		metric.Value += (old.(counter.Metric)).Value
+		v.Value += (old.(counter.Metric)).Value
 	}
-	m.metrics[key] = metric
+	m.metrics[key] = v
 }
 
 func (m *Mon) Updated() {
