@@ -2,34 +2,25 @@ package handlers
 
 import (
 	"errors"
-	"github.com/dlomanov/mon/internal/handlers/apperrors"
-	bind "github.com/dlomanov/mon/internal/handlers/binding"
-	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
-	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
+	"github.com/dlomanov/mon/internal/apperrors"
+	bind "github.com/dlomanov/mon/internal/apps/server/handlers/binding"
+	"github.com/dlomanov/mon/internal/entities/metrics/counter"
+	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
 	"github.com/dlomanov/mon/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"net/http"
-	"strings"
 )
 
-// UpdateHandler path: /update/<type>/<name>/<value>
 func UpdateHandler(db storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const pathPrefix = "/update/"
-
-		if !strings.HasPrefix(r.RequestURI, pathPrefix) {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
+		var err error
 		var apperr apperrors.AppError
 
-		pathValues, _ := strings.CutPrefix(r.RequestURI, pathPrefix)
-		metric, err := bind.Metric(pathValues)
+		metric, err := bind.Metric(bind.RawMetric{
+			Type:  chi.URLParam(r, "type"),
+			Name:  chi.URLParam(r, "name"),
+			Value: chi.URLParam(r, "value"),
+		})
 		if errors.As(err, &apperr) {
 			w.WriteHeader(statusCode(apperr))
 			return

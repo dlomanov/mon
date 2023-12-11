@@ -1,16 +1,16 @@
-package main
+package collector
 
 import (
-	"github.com/dlomanov/mon/internal/handlers/metrics"
-	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
-	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
+	"github.com/dlomanov/mon/internal/entities/metrics"
+	"github.com/dlomanov/mon/internal/entities/metrics/counter"
+	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log"
 	"testing"
 )
 
-func TestMon_UpdateGauge(t *testing.T) {
+func TestCollector_UpdateGauge(t *testing.T) {
 	type args struct {
 		name   string
 		values []float64
@@ -32,10 +32,10 @@ func TestMon_UpdateGauge(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := make(map[string]metrics.Metric, 1)
-			m := &Mon{metrics: storage, logger: log.Default()}
+			c := Collector{metrics: storage, logger: log.Default()}
 
 			for _, value := range tt.args.values {
-				m.UpdateGauge(tt.args.name, value)
+				c.UpdateGauge(tt.args.name, value)
 			}
 
 			res, ok := storage[gauge.Metric{Name: tt.args.name}.Key()]
@@ -46,7 +46,7 @@ func TestMon_UpdateGauge(t *testing.T) {
 	}
 }
 
-func TestMon_UpdateCounter(t *testing.T) {
+func TestCollector_UpdateCounter(t *testing.T) {
 	type args struct {
 		name   string
 		values []int64
@@ -68,10 +68,10 @@ func TestMon_UpdateCounter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := make(map[string]metrics.Metric, 1)
-			m := &Mon{metrics: storage, logger: log.Default()}
+			c := Collector{metrics: storage, logger: log.Default()}
 
 			for _, value := range tt.args.values {
-				m.UpdateCounter(tt.args.name, value)
+				c.UpdateCounter(tt.args.name, value)
 			}
 
 			res, ok := storage[counter.Metric{Name: tt.args.name}.Key()]

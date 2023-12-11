@@ -2,7 +2,7 @@ package counter
 
 import (
 	"fmt"
-	"github.com/dlomanov/mon/internal/handlers/metrics"
+	"github.com/dlomanov/mon/internal/entities/metrics"
 	"strconv"
 )
 

@@ -2,16 +2,10 @@ package binding
 
 import (
 	"errors"
-	"github.com/dlomanov/mon/internal/handlers/apperrors"
-	"github.com/dlomanov/mon/internal/handlers/metrics"
-	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
-	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
-	"strings"
-)
-
-const (
-	fieldCount = 3
-	sep        = "/"
+	"github.com/dlomanov/mon/internal/apperrors"
+	"github.com/dlomanov/mon/internal/entities/metrics"
+	"github.com/dlomanov/mon/internal/entities/metrics/counter"
+	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
 )
 
 const (
@@ -22,45 +16,29 @@ const (
 	ErrUnsupportedMetricType apperrors.Code = "ERR_INTERNAL_UNSUPPORTED_METRIC_TYPE"
 )
 
-func Metric(path string) (metric metrics.Metric, err error) {
-	trimmed := strings.TrimRight(path, sep)
-	values := strings.Split(trimmed, sep)
+type RawMetric struct {
+	Type  string
+	Name  string
+	Value string
+}
 
-	raw := struct {
-		metricType string
-		name       string
-		value      string
-	}{}
-
-	for i, v := range values {
-		switch i {
-		case 0:
-			raw.metricType = strings.ToLower(v)
-		case 1:
-			raw.name = strings.ToLower(v)
-		case 2:
-			raw.value = v
-		default:
-			err = ErrInvalidMetricPath.New("expected %d path values, but received %d", fieldCount, len(values))
-		}
-	}
-
-	metricType, ok := metrics.ParseMetricType(raw.metricType)
+func Metric(raw RawMetric) (metric metrics.Metric, err error) {
+	metricType, ok := metrics.ParseMetricType(raw.Type)
 	if !ok {
-		err = ErrInvalidMetricType.New("unknown metric type %s", raw.metricType)
+		err = ErrInvalidMetricType.New("unknown metric type %s", raw.Type)
 		return
 	}
-	if raw.name == "" {
-		err = ErrInvalidMetricName.New("empty metric name")
+	if raw.Name == "" {
+		err = ErrInvalidMetricName.New("empty metric raw.Name")
 		return
 	}
 
-	if raw.value == "" {
+	if raw.Value == "" {
 		err = ErrInvalidMetricValue.New("empty value")
 		return
 	}
 
-	metric, e := createMetric(metricType, raw.name, raw.value)
+	metric, e := createMetric(metricType, raw.Name, raw.Value)
 	if e == nil {
 		return
 	}

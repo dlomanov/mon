@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"github.com/dlomanov/mon/internal/handlers/apperrors"
-	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
-	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
+	"github.com/dlomanov/mon/internal/apperrors"
+	"github.com/dlomanov/mon/internal/entities/metrics/counter"
+	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
 	"github.com/dlomanov/mon/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"net/http"

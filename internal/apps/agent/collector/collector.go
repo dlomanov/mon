@@ -1,64 +1,62 @@
-package main
+package collector
 
 import (
 	"fmt"
-	"github.com/dlomanov/mon/internal/handlers/metrics"
-	"github.com/dlomanov/mon/internal/handlers/metrics/counter"
-	"github.com/dlomanov/mon/internal/handlers/metrics/gauge"
+	"github.com/dlomanov/mon/internal/entities/metrics"
+	"github.com/dlomanov/mon/internal/entities/metrics/counter"
+	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 )
 
-const (
-	baseURL = "http://localhost:8080"
-)
-
-type Mon struct {
+type Collector struct {
 	metrics map[string]metrics.Metric
 	logger  *log.Logger
+	addr    string
 }
 
-func NewMon(logger *log.Logger) Mon {
-	return Mon{
+func NewCollector(addr string, logger *log.Logger) Collector {
+	return Collector{
+		addr:    addr,
 		metrics: make(map[string]metrics.Metric),
 		logger:  logger,
 	}
 }
 
-func (m *Mon) UpdateGauge(name string, value float64) {
+func (c *Collector) UpdateGauge(name string, value float64) {
 	v := gauge.Metric{Name: name, Value: value}
-	m.metrics[v.Key()] = v
+	c.metrics[v.Key()] = v
 }
 
-func (m *Mon) UpdateCounter(name string, value int64) {
+func (c *Collector) UpdateCounter(name string, value int64) {
 	v := counter.Metric{Name: name, Value: value}
 	key := v.Key()
-	old, ok := m.metrics[key]
+	old, ok := c.metrics[key]
 	if ok {
 		v.Value += (old.(counter.Metric)).Value
 	}
-	m.metrics[key] = v
+	c.metrics[key] = v
 }
 
-func (m *Mon) Updated() {
+func (c *Collector) Updated() {
 	sb := strings.Builder{}
 	sb.WriteString("METRICS UPDATED:\n")
-	for key := range m.metrics {
+	for key := range c.metrics {
 		sb.WriteString(fmt.Sprintf("- %s\n", key))
 	}
 	sb.WriteRune('\n')
-	m.logger.Print(sb.String())
+	c.logger.Print(sb.String())
 }
 
-func (m *Mon) ReportMetrics() {
+func (c *Collector) ReportMetrics() {
 	sb := strings.Builder{}
 	sb.WriteString("REPORTING:\n")
-	for key, v := range m.metrics {
+	for key, v := range c.metrics {
 		mtype, name, value := v.Deconstruct()
 
-		requestURL := fmt.Sprintf("%s/update/%s/%s/%s", baseURL, mtype, name, value)
+		requestURL := fmt.Sprintf("%s/update/%s/%s/%s", c.addr, mtype, name, value)
 		res, err := http.Post(requestURL, "text/plain", nil)
 		_, _ = io.Copy(io.Discard, res.Body)
 		_ = res.Body.Close()
@@ -70,5 +68,5 @@ func (m *Mon) ReportMetrics() {
 		}
 	}
 	sb.WriteRune('\n')
-	m.logger.Print(sb.String())
+	c.logger.Print(sb.String())
 }
