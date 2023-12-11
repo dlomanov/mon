@@ -82,7 +82,7 @@ func TestServer(t *testing.T) {
 		{
 			name: "case 12: get report",
 			args: args{method: http.MethodGet, path: "/"},
-			want: want{code: http.StatusOK, value: "\n\n<p>counter_key: 3\n</p>\n\n<p>gauge_key: 4.0000004\n</p>\n\n", contentType: "text/html; charset=utf-8"},
+			want: want{code: http.StatusOK, value: "<p>counter_key: 3\n</p><p>gauge_key: 4.0000004\n</p>", contentType: "text/html; charset=utf-8"},
 		},
 	}
 
@@ -92,6 +92,8 @@ func TestServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, tt.args.method, tt.args.path)
+			_ = resp.Body.Close()
+
 			assert.Equal(t, tt.want.code, resp.StatusCode, "Unexpected status code")
 			assert.Equal(t, tt.want.value, body)
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))

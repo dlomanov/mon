@@ -8,10 +8,7 @@ import (
 	"slices"
 )
 
-const htmlTemplate = `
-{{range $val := .}}
-<p>{{$val}}</p>
-{{end}}`
+const htmlTemplate = `{{range $val := .}}<p>{{$val}}</p>{{end}}`
 
 func Report(db storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
