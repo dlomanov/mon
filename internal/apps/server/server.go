@@ -19,7 +19,9 @@ func createRouter() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
-	router.Post("/update/{type}/{name}/{value}", handlers.UpdateHandler(db))
+	router.Post("/update/{type}/{name}/{value}", handlers.Update(db))
+	router.Get("/value/{type}/{name}", handlers.Get(db))
+	router.Get("/", handlers.Report(db))
 
 	return router
 }

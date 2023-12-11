@@ -8,6 +8,15 @@ type memStorage struct {
 	storage map[string]string
 }
 
+func (mem *memStorage) All() map[string]string {
+	result := make(map[string]string, len(mem.storage))
+	for k, v := range mem.storage {
+		result[k] = v
+	}
+
+	return result
+}
+
 func (mem *memStorage) Set(key, value string) {
 	mem.storage[key] = value
 }

@@ -9,9 +9,11 @@ import (
 	"testing"
 )
 
-func TestServerUpdate(t *testing.T) {
+func TestServer(t *testing.T) {
 	type want struct {
-		code int
+		code        int
+		value       string
+		contentType string
 	}
 	type args struct {
 		method string
@@ -23,64 +25,64 @@ func TestServerUpdate(t *testing.T) {
 		want want
 	}{
 		{
-			name: "success gauge case",
+			name: "case 1: update gauge value",
 			args: args{method: http.MethodPost, path: "/update/gauge/key/3.0000003"},
 			want: want{code: http.StatusOK},
 		},
 		{
-			name: "success counter case",
+			name: "case 2: update gauge value",
+			args: args{method: http.MethodPost, path: "/update/gauge/key/4.0000004"},
+			want: want{code: http.StatusOK},
+		},
+		{
+			name: "case 3: get gauge value",
+			args: args{method: http.MethodGet, path: "/value/gauge/key"},
+			want: want{code: http.StatusOK, value: "4.0000004", contentType: "text/plain; charset=utf-8"},
+		},
+		{
+			name: "case 4: update counter value",
 			args: args{method: http.MethodPost, path: "/update/counter/key/1"},
 			want: want{code: http.StatusOK},
 		},
 		{
-			name: "invalid counter value case 1",
+			name: "case 5: update counter value",
+			args: args{method: http.MethodPost, path: "/update/counter/key/2"},
+			want: want{code: http.StatusOK},
+		},
+		{
+			name: "case 6: get counter value",
+			args: args{method: http.MethodGet, path: "/value/counter/key"},
+			want: want{code: http.StatusOK, value: "3", contentType: "text/plain; charset=utf-8"},
+		},
+		{
+			name: "case 7: invalid counter value",
 			args: args{method: http.MethodPost, path: "/update/counter/key/1.00001"},
 			want: want{code: http.StatusBadRequest},
 		},
 		{
-			name: "invalid counter value case 2",
-			args: args{method: http.MethodPost, path: "/update/counter/key/"},
-			want: want{code: http.StatusNotFound},
-		},
-		{
-			name: "invalid counter value case 3",
+			name: "case 8: invalid counter value",
 			args: args{method: http.MethodPost, path: "/update/counter/key/none"},
 			want: want{code: http.StatusBadRequest},
 		},
 		{
-			name: "invalid gauge value case 1",
+			name: "case 9: invalid counter path",
+			args: args{method: http.MethodPost, path: "/update/counter/key/"},
+			want: want{code: http.StatusNotFound, value: "404 page not found\n", contentType: "text/plain; charset=utf-8"},
+		},
+		{
+			name: "case 10: invalid gauge value",
 			args: args{method: http.MethodPost, path: "/update/counter/key/none"},
 			want: want{code: http.StatusBadRequest},
 		},
 		{
-			name: "invalid gauge value case 2",
+			name: "case 11: invalid gauge path",
 			args: args{method: http.MethodPost, path: "/update/counter/key/"},
-			want: want{code: http.StatusNotFound},
+			want: want{code: http.StatusNotFound, value: "404 page not found\n", contentType: "text/plain; charset=utf-8"},
 		},
 		{
-			name: "invalid path 1",
-			args: args{method: http.MethodPost, path: "/"},
-			want: want{code: http.StatusNotFound},
-		},
-		{
-			name: "invalid path 2",
-			args: args{method: http.MethodPost, path: "/update"},
-			want: want{code: http.StatusNotFound},
-		},
-		{
-			name: "invalid path 3",
-			args: args{method: http.MethodPost, path: "/update/"},
-			want: want{code: http.StatusNotFound},
-		},
-		{
-			name: "invalid path 4",
-			args: args{method: http.MethodPost, path: "/update/counter"},
-			want: want{code: http.StatusNotFound},
-		},
-		{
-			name: "invalid path 5",
-			args: args{method: http.MethodPost, path: "/update/counter/"},
-			want: want{code: http.StatusNotFound},
+			name: "case 12: get report",
+			args: args{method: http.MethodGet, path: "/"},
+			want: want{code: http.StatusOK, value: "\n\n<p>counter_key: 3\n</p>\n\n<p>gauge_key: 4.0000004\n</p>\n\n", contentType: "text/html; charset=utf-8"},
 		},
 	}
 
@@ -89,8 +91,10 @@ func TestServerUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, _ := testRequest(t, ts, tt.args.method, tt.args.path)
+			resp, body := testRequest(t, ts, tt.args.method, tt.args.path)
 			assert.Equal(t, tt.want.code, resp.StatusCode, "Unexpected status code")
+			assert.Equal(t, tt.want.value, body)
+			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
 }

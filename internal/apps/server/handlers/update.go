@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-func UpdateHandler(db storage.Storage) http.HandlerFunc {
+func Update(db storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var apperr apperrors.AppError

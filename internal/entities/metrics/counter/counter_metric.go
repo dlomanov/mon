@@ -1,7 +1,6 @@
 package counter
 
 import (
-	"fmt"
 	"github.com/dlomanov/mon/internal/entities/metrics"
 	"strconv"
 )
@@ -27,7 +26,7 @@ func (m Metric) StringValue() string {
 }
 
 func (m Metric) Key() string {
-	return fmt.Sprintf("%s_%s", metrics.MetricCounter, m.Name)
+	return metrics.MetricCounter.CreateKey(m.Name)
 }
 
 func NewMetric(name, valueString string) (metric Metric, err error) {

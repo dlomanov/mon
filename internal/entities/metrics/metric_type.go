@@ -1,6 +1,9 @@
 package metrics
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type MetricType string
 
@@ -26,4 +29,8 @@ func ParseMetricType(str string) (value MetricType, ok bool) {
 	default:
 		return "", false
 	}
+}
+
+func (t MetricType) CreateKey(metricName string) string {
+	return fmt.Sprintf("%s_%s", t, metricName)
 }
