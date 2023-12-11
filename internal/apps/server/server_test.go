@@ -113,7 +113,7 @@ func testRequest(
 	defer func(body io.Closer) { _ = body.Close() }(resp.Body)
 
 	respBody, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	require.NoError(t, err)
 
 	return resp, string(respBody)
