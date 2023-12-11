@@ -110,9 +110,10 @@ func testRequest(
 
 	resp, err = ts.Client().Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func(body io.Closer) { _ = body.Close() }(resp.Body)
 
 	respBody, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
 	require.NoError(t, err)
 
 	return resp, string(respBody)
