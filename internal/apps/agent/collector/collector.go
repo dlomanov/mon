@@ -5,9 +5,8 @@ import (
 	"github.com/dlomanov/mon/internal/entities/metrics"
 	"github.com/dlomanov/mon/internal/entities/metrics/counter"
 	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
-	"io"
+	"github.com/go-resty/resty/v2"
 	"log"
-	"net/http"
 	"strings"
 )
 
@@ -53,19 +52,30 @@ func (c *Collector) Updated() {
 func (c *Collector) ReportMetrics() {
 	sb := strings.Builder{}
 	sb.WriteString("REPORTING:\n")
+
+	addr := c.addr
+	if !strings.HasPrefix(addr, "http") { // ensure protocol schema
+		addr = "http://" + addr
+	}
+
+	client := resty.New()
+	client.SetBaseURL(addr)
+
 	for key, v := range c.metrics {
 		mtype, name, value := v.Deconstruct()
-
-		requestURL := fmt.Sprintf("%s/update/%s/%s/%s", c.addr, mtype, name, value)
-		res, err := http.Post(requestURL, "text/plain", nil)
-		_, _ = io.Copy(io.Discard, res.Body)
-		_ = res.Body.Close()
+		_, err := client.
+			R().
+			SetPathParam("type", mtype).
+			SetPathParam("name", name).
+			SetPathParam("value", value).
+			Post("/update/{type}/{name}/{value}")
 
 		if err != nil {
 			sb.WriteString(fmt.Sprintf(" - %s: failed:\n   %v\n", key, err))
-		} else {
-			sb.WriteString(fmt.Sprintf(" - %s: ok\n", key))
+			continue
 		}
+
+		sb.WriteString(fmt.Sprintf(" - %s: ok\n", key))
 	}
 	sb.WriteRune('\n')
 	c.logger.Print(sb.String())

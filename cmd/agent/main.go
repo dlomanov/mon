@@ -1,18 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"github.com/dlomanov/mon/internal/apps/agent"
-	"time"
-)
-
-const (
-	addr           = "http://localhost:8080"
-	pollInterval   = time.Second * 2
-	reportInterval = time.Second * 10
 )
 
 func main() {
-	err := agent.Run(addr, pollInterval, reportInterval)
+	opt := parseOptions()
+	fmt.Printf("agent running on %s\n", opt.addr)
+	err := agent.Run(opt.addr, opt.pollInterval, opt.reportInterval)
 	if err != nil {
 		panic(err)
 	}
