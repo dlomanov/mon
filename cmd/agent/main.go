@@ -6,9 +6,9 @@ import (
 )
 
 func main() {
-	opt := parseOptions()
-	fmt.Printf("agent running on %s\n", opt.addr)
-	err := agent.Run(opt.addr, opt.pollInterval, opt.reportInterval)
+	cfg := getConfig()
+	fmt.Printf("agent running...\n%s\n\n", cfg)
+	err := agent.Run(cfg.Addr, cfg.PollInterval, cfg.ReportInterval)
 	if err != nil {
 		panic(err)
 	}

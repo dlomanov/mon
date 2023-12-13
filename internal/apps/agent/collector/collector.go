@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"fmt"
 	"github.com/dlomanov/mon/internal/entities/metrics"
 	"github.com/dlomanov/mon/internal/entities/metrics/counter"
 	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
@@ -40,19 +39,10 @@ func (c *Collector) UpdateCounter(name string, value int64) {
 }
 
 func (c *Collector) Updated() {
-	sb := strings.Builder{}
-	sb.WriteString("METRICS UPDATED:\n")
-	for key := range c.metrics {
-		sb.WriteString(fmt.Sprintf("- %s\n", key))
-	}
-	sb.WriteRune('\n')
-	c.logger.Print(sb.String())
+	c.logger.Printf("%d metrics updated", len(c.metrics))
 }
 
 func (c *Collector) ReportMetrics() {
-	sb := strings.Builder{}
-	sb.WriteString("REPORTING:\n")
-
 	addr := c.addr
 	if !strings.HasPrefix(addr, "http") { // ensure protocol schema
 		addr = "http://" + addr
@@ -61,7 +51,10 @@ func (c *Collector) ReportMetrics() {
 	client := resty.New()
 	client.SetBaseURL(addr)
 
-	for key, v := range c.metrics {
+	sb := strings.Builder{}
+
+	failed := 0
+	for _, v := range c.metrics {
 		mtype, name, value := v.Deconstruct()
 		_, err := client.
 			R().
@@ -70,13 +63,20 @@ func (c *Collector) ReportMetrics() {
 			SetPathParam("value", value).
 			Post("/update/{type}/{name}/{value}")
 
-		if err != nil {
-			sb.WriteString(fmt.Sprintf(" - %s: failed:\n   %v\n", key, err))
+		if err == nil {
 			continue
 		}
 
-		sb.WriteString(fmt.Sprintf(" - %s: ok\n", key))
+		failed++
+		sb.WriteString(" - ")
+		sb.WriteString(err.Error())
+		sb.WriteString("\n")
 	}
-	sb.WriteRune('\n')
-	c.logger.Print(sb.String())
+
+	if failed == 0 {
+		c.logger.Printf("%d metrics reported\n", len(c.metrics))
+		return
+	}
+
+	c.logger.Printf("%d metrics reported, %d failed\n%v", len(c.metrics)-failed, failed, sb.String())
 }
