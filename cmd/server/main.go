@@ -6,9 +6,9 @@ import (
 )
 
 func main() {
-	opt := parseOptions()
-	fmt.Printf("servers running on %s\n", opt.addr)
-	err := server.ListenAndServe(opt.addr)
+	cfg := getConfig()
+	fmt.Printf("servers running on %s\n", cfg.Addr)
+	err := server.ListenAndServe(cfg.Addr)
 	if err != nil {
 		panic(err)
 	}
