@@ -16,10 +16,6 @@ func (t MetricType) IsValid() bool {
 	return t == MetricGauge || t == MetricCounter
 }
 
-func (t MetricType) String() string {
-	return string(t)
-}
-
 func ParseMetricType(str string) (value MetricType, ok bool) {
 	switch lower := strings.ToLower(str); lower {
 	case string(MetricGauge):

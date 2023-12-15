@@ -7,8 +7,8 @@ import (
 
 func main() {
 	cfg := getConfig()
-	fmt.Printf("agent running...\n%s\n\n", cfg)
-	err := agent.Run(cfg.Addr, cfg.PollInterval, cfg.ReportInterval)
+	fmt.Printf("agent running...\n%+v\n\n", cfg)
+	err := agent.Run(cfg)
 	if err != nil {
 		panic(err)
 	}

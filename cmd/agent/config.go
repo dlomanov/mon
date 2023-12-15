@@ -2,27 +2,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/caarlos0/env/v10"
+	"github.com/dlomanov/mon/internal/apps/agent"
 	"time"
 )
-
-func init() {
-	var _ fmt.Stringer = (*config)(nil)
-}
-
-type config struct {
-	Addr           string
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-}
-
-func (c config) String() string {
-	return fmt.Sprintf(`config:
-- ADDRESS:         %s
-- POLL_INTERVAL:   %v
-- REPORT_INTERVAL: %v`, c.Addr, c.PollInterval, c.ReportInterval)
-}
 
 type rawConfig struct {
 	Addr           string `env:"ADDRESS"`
@@ -34,18 +17,18 @@ func (r rawConfig) isEmpty() bool {
 	return r.Addr == "" || r.PollInterval == 0 || r.ReportInterval == 0
 }
 
-func (r rawConfig) toConfig() config {
+func (r rawConfig) toConfig() agent.Config {
 	if r.isEmpty() {
 		panic("invalid configuration")
 	}
-	return config{
+	return agent.Config{
 		Addr:           r.Addr,
 		PollInterval:   time.Duration(int64(time.Second) * int64(r.PollInterval)),
 		ReportInterval: time.Duration(int64(time.Second) * int64(r.ReportInterval)),
 	}
 }
 
-func getConfig() config {
+func getConfig() agent.Config {
 	raw := rawConfig{}
 
 	err := env.Parse(&raw)

@@ -39,6 +39,9 @@ func (m Metric) With(valueString string) (metric Metric, err error) {
 
 func newMetric(name, valueString string) (metric Metric, err error) {
 	value, err := strconv.ParseInt(valueString, 10, 64)
-	metric = Metric{Name: name, Value: value}
-	return
+	if err != nil {
+		return Metric{}, err
+	}
+
+	return Metric{Name: name, Value: value}, err
 }

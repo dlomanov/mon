@@ -9,13 +9,12 @@ import (
 )
 
 func ListenAndServe(addr string) error {
-	r := createRouter()
+	db := storage.NewStorage()
+	r := createRouter(db)
 	return http.ListenAndServe(addr, r)
 }
 
-func createRouter() *chi.Mux {
-	db := storage.NewStorage()
-
+func createRouter(db storage.Storage) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)

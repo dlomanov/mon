@@ -12,15 +12,24 @@ import (
 type Collector struct {
 	metrics map[string]metrics.Metric
 	logger  *log.Logger
-	addr    string
+	client  *resty.Client
 }
 
 func NewCollector(addr string, logger *log.Logger) Collector {
 	return Collector{
-		addr:    addr,
+		client:  createClient(addr),
 		metrics: make(map[string]metrics.Metric),
 		logger:  logger,
 	}
+}
+
+func createClient(addr string) *resty.Client {
+	if !strings.HasPrefix(addr, "http") { // ensure protocol schema
+		addr = "http://" + addr
+	}
+	client := resty.New()
+	client.SetBaseURL(addr)
+	return client
 }
 
 func (c *Collector) UpdateGauge(name string, value float64) {
@@ -38,39 +47,29 @@ func (c *Collector) UpdateCounter(name string, value int64) {
 	c.metrics[key] = v
 }
 
-func (c *Collector) Updated() {
+func (c *Collector) LogUpdated() {
 	c.logger.Printf("%d metrics updated", len(c.metrics))
 }
 
 func (c *Collector) ReportMetrics() {
-	addr := c.addr
-	if !strings.HasPrefix(addr, "http") { // ensure protocol schema
-		addr = "http://" + addr
-	}
-
-	client := resty.New()
-	client.SetBaseURL(addr)
-
 	sb := strings.Builder{}
 
 	failed := 0
 	for _, v := range c.metrics {
 		mtype, name, value := v.Deconstruct()
-		_, err := client.
+		_, err := c.client.
 			R().
 			SetPathParam("type", mtype).
 			SetPathParam("name", name).
 			SetPathParam("value", value).
 			Post("/update/{type}/{name}/{value}")
 
-		if err == nil {
-			continue
+		if err != nil {
+			failed++
+			sb.WriteString(" - ")
+			sb.WriteString(err.Error())
+			sb.WriteString("\n")
 		}
-
-		failed++
-		sb.WriteString(" - ")
-		sb.WriteString(err.Error())
-		sb.WriteString("\n")
 	}
 
 	if failed == 0 {

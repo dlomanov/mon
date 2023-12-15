@@ -31,6 +31,9 @@ func (m Metric) Key() string {
 
 func NewMetric(name, valueString string) (metric Metric, err error) {
 	value, err := strconv.ParseFloat(valueString, 64)
-	metric = Metric{Name: name, Value: value}
-	return
+	if err != nil {
+		return Metric{}, err
+	}
+
+	return Metric{Name: name, Value: value}, nil
 }

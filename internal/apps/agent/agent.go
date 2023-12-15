@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-func Run(addr string, pollInterval, reportInterval time.Duration) (err error) {
-	m := collector.NewCollector(addr, log.Default())
-	reportTime := time.Now().Add(reportInterval)
+func Run(cfg Config) (err error) {
+	m := collector.NewCollector(cfg.Addr, log.Default())
+	reportTime := time.Now().Add(cfg.ReportInterval)
 
 	for i := 0; i < math.MaxInt64; i++ {
 		ms := runtime.MemStats{}
@@ -46,14 +46,14 @@ func Run(addr string, pollInterval, reportInterval time.Duration) (err error) {
 		m.UpdateGauge("TotalAlloc", float64(ms.TotalAlloc))
 		m.UpdateGauge("RandomValue", rand.Float64())
 		m.UpdateCounter("PollCount", 1)
-		m.Updated()
+		m.LogUpdated()
 
 		if reportTime.Compare(time.Now()) <= 0 {
-			reportTime = time.Now().Add(reportInterval)
+			reportTime = time.Now().Add(cfg.ReportInterval)
 			m.ReportMetrics()
 		}
 
-		time.Sleep(pollInterval)
+		time.Sleep(cfg.PollInterval)
 	}
 	return
 }

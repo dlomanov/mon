@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/dlomanov/mon/internal/apps/server/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -86,7 +87,9 @@ func TestServer(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(createRouter())
+	db := mocks.NewStorage()
+	r := createRouter(db)
+	ts := httptest.NewServer(r)
 	defer ts.Close()
 
 	for _, tt := range tests {
@@ -107,6 +110,8 @@ func testRequest(
 	method string,
 	path string,
 ) (resp *http.Response, body string) {
+	t.Helper()
+
 	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
 
