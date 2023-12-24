@@ -1,22 +1,34 @@
 package server
 
 import (
+	"fmt"
 	"github.com/dlomanov/mon/internal/apps/server/handlers"
+	"github.com/dlomanov/mon/internal/apps/server/logger"
+	"github.com/dlomanov/mon/internal/apps/server/middlewares"
 	"github.com/dlomanov/mon/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 	"net/http"
 )
 
-func ListenAndServe(addr string) error {
+func Run(cfg Config) error {
 	db := storage.NewStorage()
 	r := createRouter(db)
-	return http.ListenAndServe(addr, r)
+	err := logger.WithLevel(cfg.LogLevel)
+	if err != nil {
+		return err
+	}
+
+	cfgStr := fmt.Sprintf("%+v", cfg)
+	logger.Log.Info("server running...", zap.String("cfg", cfgStr))
+
+	return http.ListenAndServe(cfg.Addr, r)
 }
 
 func createRouter(db storage.Storage) *chi.Mux {
 	router := chi.NewRouter()
-	router.Use(middleware.Logger)
+	router.Use(middlewares.Logger)
 	router.Use(middleware.Recoverer)
 	router.Post("/update/{type}/{name}/{value}", handlers.Update(db))
 	router.Get("/value/{type}/{name}", handlers.Get(db))

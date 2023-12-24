@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"github.com/dlomanov/mon/internal/apps/server/logger"
 	"github.com/dlomanov/mon/internal/entities/metrics"
 	"github.com/dlomanov/mon/internal/storage"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -29,6 +31,9 @@ func Get(db storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		_, _ = w.Write([]byte(value))
+		_, err := w.Write([]byte(value))
+		if err != nil {
+			logger.Log.Error("error occurred", zap.String("error", err.Error()))
+		}
 	}
 }
