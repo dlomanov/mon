@@ -2,27 +2,24 @@ package main
 
 import (
 	"flag"
-	"github.com/caarlos0/env/v10"
+	"github.com/dlomanov/mon/internal/apps/server"
+	"os"
 )
 
-type config struct {
-	Addr string `env:"ADDRESS"`
-}
-
-func (cfg config) isEmpty() bool {
-	return cfg.Addr == ""
-}
-
-func getConfig() (cfg config) {
-	err := env.Parse(&cfg)
-	if err != nil {
-		panic(err)
-	}
-	if !cfg.isEmpty() {
-		return cfg
-	}
+func getConfig() server.Config {
+	cfg := server.Config{}
 
 	flag.StringVar(&cfg.Addr, "a", "localhost:8080", "server address")
+	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.Parse()
-	return
+
+	if addr := os.Getenv("ADDRESS"); addr != "" {
+		cfg.Addr = addr
+	}
+
+	if lvl := os.Getenv("LOG_LEVEL"); lvl != "" {
+		cfg.LogLevel = lvl
+	}
+
+	return cfg
 }
