@@ -2,35 +2,24 @@ package main
 
 import (
 	"flag"
-	"github.com/caarlos0/env/v10"
 	"github.com/dlomanov/mon/internal/apps/server"
+	"os"
 )
 
 func getConfig() server.Config {
-	cfg := rawConfig{}
+	cfg := server.Config{}
 
-	err := env.Parse(&cfg)
-	if err != nil {
-		panic(err)
+	flag.StringVar(&cfg.Addr, "a", "localhost:8080", "server address")
+	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
+	flag.Parse()
+
+	if addr := os.Getenv("ADDRESS"); addr != "" {
+		cfg.Addr = addr
 	}
 
-	if cfg.isEmpty() {
-		flag.StringVar(&cfg.Addr, "a", "localhost:8080", "server address")
-		flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
-		flag.Parse()
+	if lvl := os.Getenv("LOG_LEVEL"); lvl != "" {
+		cfg.LogLevel = lvl
 	}
 
-	return server.Config{
-		Addr:     cfg.Addr,
-		LogLevel: cfg.LogLevel,
-	}
-}
-
-type rawConfig struct {
-	Addr     string `env:"ADDRESS"`
-	LogLevel string `env:"LOG_LEVEL"`
-}
-
-func (cfg rawConfig) isEmpty() bool {
-	return cfg.Addr == "" || cfg.LogLevel == ""
+	return cfg
 }
