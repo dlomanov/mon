@@ -13,12 +13,12 @@ type Metric struct {
 }
 
 type MetricsKey struct {
-	Id   string
+	ID   string
 	Type MetricType
 }
 
 func (m *MetricsKey) String() string {
-	return fmt.Sprintf("%s_%s", m.Type, m.Id)
+	return fmt.Sprintf("%s_%s", m.Type, m.ID)
 }
 
 func (m *Metric) StringValue() string {
@@ -33,7 +33,7 @@ func (m *Metric) StringValue() string {
 }
 
 func (m *Metric) CloneWith(value string) (Metric, error) {
-	key := MetricsKey{Id: m.Id, Type: m.Type}
+	key := MetricsKey{ID: m.ID, Type: m.Type}
 
 	if key.Type == MetricGauge {
 		v, err := strconv.ParseFloat(value, 64)

@@ -32,13 +32,13 @@ func createClient(addr string) *resty.Client {
 }
 
 func (c *Collector) UpdateGauge(name string, value float64) {
-	key := entities.MetricsKey{Id: name, Type: entities.MetricGauge}
+	key := entities.MetricsKey{ID: name, Type: entities.MetricGauge}
 	v := entities.Metric{MetricsKey: key, Value: &value}
 	c.metrics[key.String()] = v
 }
 
 func (c *Collector) UpdateCounter(name string, value int64) {
-	key := entities.MetricsKey{Id: name, Type: entities.MetricCounter}
+	key := entities.MetricsKey{ID: name, Type: entities.MetricCounter}
 	keyString := key.String()
 	v := entities.Metric{MetricsKey: key, Delta: &value}
 

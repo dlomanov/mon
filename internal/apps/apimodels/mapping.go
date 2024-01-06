@@ -39,13 +39,13 @@ func MapToEntityKey(key MetricKey) (entityKey entities.MetricsKey, err error) {
 		return entityKey, err
 	}
 
-	if key.Id == "" {
+	if key.ID == "" {
 		err = ErrInvalidMetricName.Newf("empty entity name")
 		return entityKey, err
 	}
 
 	entityKey = entities.MetricsKey{
-		Id:   key.Id,
+		ID:   key.ID,
 		Type: metricType,
 	}
 
@@ -62,7 +62,7 @@ func MapToModel(entity entities.Metric) Metric {
 
 func MapToModelKey(entity entities.MetricsKey) MetricKey {
 	return MetricKey{
-		Id:   entity.Id,
+		ID:   entity.ID,
 		Type: string(entity.Type),
 	}
 }
