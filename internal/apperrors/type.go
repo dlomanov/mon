@@ -22,8 +22,11 @@ const (
 	// ErrUnsupportedMetricType "unsupported metric type %s"
 	ErrUnsupportedMetricType AppErrorType = iota + 1
 
-	// ErrInvalidMetricPath "invalid metric path %s"
-	ErrInvalidMetricPath
+	// ErrUnsupportedContentType "unsupported content type %s"
+	ErrUnsupportedContentType
+
+	// ErrInvalidMetricRequest "invalid metric request"
+	ErrInvalidMetricRequest
 
 	// ErrInvalidMetricType "invalid metric type %s"
 	ErrInvalidMetricType
@@ -36,9 +39,10 @@ const (
 )
 
 var templateMap = map[AppErrorType]string{
-	ErrUnsupportedMetricType: "unsupported metric type %s",
-	ErrInvalidMetricPath:     "invalid metric path %s",
-	ErrInvalidMetricType:     "invalid metric type %s",
-	ErrInvalidMetricName:     "invalid metric name %s",
-	ErrInvalidMetricValue:    "invalid metric value %s",
+	ErrUnsupportedMetricType:  "unsupported metric type %s",
+	ErrUnsupportedContentType: "unsupported content type %s",
+	ErrInvalidMetricRequest:   "invalid metric request",
+	ErrInvalidMetricType:      "invalid metric type %s",
+	ErrInvalidMetricName:      "invalid metric name %s",
+	ErrInvalidMetricValue:     "invalid metric value %s",
 }

@@ -36,7 +36,7 @@ func TestCollector_UpdateGauge(t *testing.T) {
 				c.UpdateGauge(tt.args.name, value)
 			}
 
-			key := entities.MetricsKey{ID: tt.args.name, Type: entities.MetricGauge}
+			key := entities.MetricsKey{Name: tt.args.name, Type: entities.MetricGauge}
 			res, ok := storage[key.String()]
 			require.True(t, ok)
 			assert.Equal(t, tt.want, *res.Value)
@@ -72,7 +72,7 @@ func TestCollector_UpdateCounter(t *testing.T) {
 				c.UpdateCounter(tt.args.name, value)
 			}
 
-			key := entities.MetricsKey{ID: tt.args.name, Type: entities.MetricCounter}
+			key := entities.MetricsKey{Name: tt.args.name, Type: entities.MetricCounter}
 			res, ok := storage[key.String()]
 			require.True(t, ok)
 			assert.Equal(t, tt.want, *res.Delta)

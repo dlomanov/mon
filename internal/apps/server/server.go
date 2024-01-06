@@ -30,8 +30,10 @@ func createRouter(db storage.Storage) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middlewares.Logger)
 	router.Use(middleware.Recoverer)
-	router.Post("/update/", handlers.Update(db))
-	router.Post("/value/", handlers.Get(db))
+	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(db))
+	router.Post("/update/", handlers.UpdateByJSON(db))
+	router.Get("/value/{type}/{name}", handlers.GetByParams(db))
+	router.Post("/value/", handlers.GetByJSON(db))
 	router.Get("/", handlers.Report(db))
 
 	return router

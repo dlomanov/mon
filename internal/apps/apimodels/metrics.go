@@ -7,6 +7,6 @@ type Metric struct {
 }
 
 type MetricKey struct {
-	ID   string `json:"id"`
+	Name string `json:"id"`
 	Type string `json:"type"`
 }

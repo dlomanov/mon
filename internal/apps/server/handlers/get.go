@@ -6,15 +6,43 @@ import (
 	"github.com/dlomanov/mon/internal/apps/server/logger"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
 
-func Get(db storage.Storage) http.HandlerFunc {
+func GetByParams(db storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if h := r.Header.Get(contentTypeKey); !strings.HasPrefix(h, "application/json") {
-			logger.Log.Debug("invalid content-type", zap.String(contentTypeKey, h))
+		key := apimodels.MetricKey{
+			Name: chi.URLParam(r, "name"),
+			Type: chi.URLParam(r, "type"),
+		}
+
+		entityKey, err := apimodels.MapToEntityKey(key)
+		if err != nil {
+			logger.Log.Debug("invalid request body", zap.Error(err))
+			http.NotFound(w, r)
+			return
+		}
+
+		value, ok := db.Get(entityKey.String())
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+
+		_, err = w.Write([]byte(value))
+		if err != nil {
+			logger.Log.Error("error occurred during response writing", zap.Error(err))
+		}
+	}
+}
+
+func GetByJSON(db storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h := r.Header.Get(HeaderContentType); !strings.HasPrefix(h, "application/json") {
+			logger.Log.Debug("invalid content-type", zap.String(HeaderContentType, h))
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			return
 		}

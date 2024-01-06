@@ -7,10 +7,10 @@ import (
 
 const (
 	ErrUnsupportedMetricType = apperrors.ErrUnsupportedMetricType
-	ErrInvalidMetricPath     = apperrors.ErrInvalidMetricPath
-	ErrInvalidMetricType     = apperrors.ErrInvalidMetricType
-	ErrInvalidMetricName     = apperrors.ErrInvalidMetricName
-	ErrInvalidMetricValue    = apperrors.ErrInvalidMetricValue
+
+	ErrInvalidMetricType  = apperrors.ErrInvalidMetricType
+	ErrInvalidMetricName  = apperrors.ErrInvalidMetricName
+	ErrInvalidMetricValue = apperrors.ErrInvalidMetricValue
 )
 
 func MapToEntity(model Metric) (entity entities.Metric, err error) {
@@ -39,13 +39,13 @@ func MapToEntityKey(key MetricKey) (entityKey entities.MetricsKey, err error) {
 		return entityKey, err
 	}
 
-	if key.ID == "" {
+	if key.Name == "" {
 		err = ErrInvalidMetricName.Newf("empty entity name")
 		return entityKey, err
 	}
 
 	entityKey = entities.MetricsKey{
-		ID:   key.ID,
+		Name: key.Name,
 		Type: metricType,
 	}
 
@@ -62,7 +62,7 @@ func MapToModel(entity entities.Metric) Metric {
 
 func MapToModelKey(entity entities.MetricsKey) MetricKey {
 	return MetricKey{
-		ID:   entity.ID,
+		Name: entity.Name,
 		Type: string(entity.Type),
 	}
 }

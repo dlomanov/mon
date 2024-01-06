@@ -5,32 +5,47 @@ import (
 	"errors"
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/apps/apimodels"
+	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
 	"github.com/dlomanov/mon/internal/apps/server/logger"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
-	"strings"
 )
 
-const (
-	contentTypeKey = "Content-Type"
-)
-
-func Update(db storage.Storage) http.HandlerFunc {
+func UpdateByParams(db storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		var metrics apimodels.Metric
-
-		if h := r.Header.Get(contentTypeKey); !strings.HasPrefix(h, "application/json") {
-			logger.Log.Debug("invalid content-type", zap.String(contentTypeKey, h))
-			w.WriteHeader(http.StatusUnsupportedMediaType)
+		metrics, err := bind.FromRouteParams(r)
+		if err != nil {
+			logger.Log.Error("error occurred during model binding", zap.Error(err))
+			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		if err = json.NewDecoder(r.Body).Decode(&metrics); err != nil {
-			logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
-			w.WriteHeader(http.StatusBadRequest)
+		entity, err := apimodels.MapToEntity(metrics)
+		if err != nil {
+			logger.Log.Error("error occurred during model mapping", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		_, err = handle(entity, db)
+		if err != nil {
+			logger.Log.Error("error occurred during metric update", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func UpdateByJSON(db storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metrics, err := bind.FromJSON(r)
+		if err != nil {
+			logger.Log.Error("error occurred during model binding", zap.Error(err))
+			w.WriteHeader(statusCode(err))
 			return
 		}
 
@@ -48,7 +63,7 @@ func Update(db storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set(contentTypeKey, "application/json")
+		w.Header().Set(HeaderContentType, "application/json")
 		err = json.NewEncoder(w).Encode(apimodels.MapToModel(processed))
 		if err != nil {
 			logger.Log.Error("error occurred during response writing", zap.Error(err))
@@ -78,8 +93,10 @@ func statusCode(err error) int {
 	}
 
 	switch apperr.Type {
-	case apimodels.ErrInvalidMetricPath:
-		return http.StatusNotFound
+	case bind.ErrUnsupportedContentType:
+		return http.StatusUnsupportedMediaType
+	case bind.ErrInvalidMetricRequest:
+		return http.StatusBadRequest
 	case apimodels.ErrInvalidMetricType:
 		return http.StatusBadRequest
 	case apimodels.ErrInvalidMetricName:
