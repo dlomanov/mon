@@ -1,16 +1,15 @@
 package collector
 
 import (
-	"github.com/dlomanov/mon/internal/entities/metrics"
-	"github.com/dlomanov/mon/internal/entities/metrics/counter"
-	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
+	"github.com/dlomanov/mon/internal/apps/apimodels"
+	"github.com/dlomanov/mon/internal/entities"
 	"github.com/go-resty/resty/v2"
 	"log"
 	"strings"
 )
 
 type Collector struct {
-	metrics map[string]metrics.Metric
+	metrics map[string]entities.Metric
 	logger  *log.Logger
 	client  *resty.Client
 }
@@ -18,7 +17,7 @@ type Collector struct {
 func NewCollector(addr string, logger *log.Logger) Collector {
 	return Collector{
 		client:  createClient(addr),
-		metrics: make(map[string]metrics.Metric),
+		metrics: make(map[string]entities.Metric),
 		logger:  logger,
 	}
 }
@@ -33,18 +32,22 @@ func createClient(addr string) *resty.Client {
 }
 
 func (c *Collector) UpdateGauge(name string, value float64) {
-	v := gauge.Metric{Name: name, Value: value}
-	c.metrics[v.Key()] = v
+	key := entities.MetricsKey{Id: name, Type: entities.MetricGauge}
+	v := entities.Metric{MetricsKey: key, Value: &value}
+	c.metrics[key.String()] = v
 }
 
 func (c *Collector) UpdateCounter(name string, value int64) {
-	v := counter.Metric{Name: name, Value: value}
-	key := v.Key()
-	old, ok := c.metrics[key]
+	key := entities.MetricsKey{Id: name, Type: entities.MetricCounter}
+	keyString := key.String()
+	v := entities.Metric{MetricsKey: key, Delta: &value}
+
+	old, ok := c.metrics[keyString]
 	if ok {
-		v.Value += (old.(counter.Metric)).Value
+		*v.Delta += *old.Delta
 	}
-	c.metrics[key] = v
+
+	c.metrics[keyString] = v
 }
 
 func (c *Collector) LogUpdated() {
@@ -56,13 +59,11 @@ func (c *Collector) ReportMetrics() {
 
 	failed := 0
 	for _, v := range c.metrics {
-		mtype, name, value := v.Deconstruct()
+		model := apimodels.MapToModel(v)
 		_, err := c.client.
 			R().
-			SetPathParam("type", mtype).
-			SetPathParam("name", name).
-			SetPathParam("value", value).
-			Post("/update/{type}/{name}/{value}")
+			SetBody(model).
+			Post("/update/")
 
 		if err != nil {
 			failed++
