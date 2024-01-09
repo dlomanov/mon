@@ -63,7 +63,7 @@ func (c *Collector) ReportMetrics() {
 	failed := 0
 	for _, v := range c.metrics {
 		model := apimodels.MapToModel(v)
-		data, err := compressJson(model)
+		data, err := compressJSON(model)
 		if err != nil {
 			failed++
 			writeerr(&sb, err.Error())
@@ -98,7 +98,7 @@ func (c *Collector) ReportMetrics() {
 	c.logger.Printf("%d metrics reported, %d failed\n%v", len(c.metrics)-failed, failed, sb.String())
 }
 
-func compressJson(model apimodels.Metric) ([]byte, error) {
+func compressJSON(model apimodels.Metric) ([]byte, error) {
 	data, err := json.Marshal(model)
 	if err != nil {
 		return nil, err
