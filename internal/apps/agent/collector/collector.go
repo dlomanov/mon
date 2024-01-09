@@ -1,6 +1,9 @@
 package collector
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"github.com/dlomanov/mon/internal/apps/apimodels"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/go-resty/resty/v2"
@@ -60,16 +63,30 @@ func (c *Collector) ReportMetrics() {
 	failed := 0
 	for _, v := range c.metrics {
 		model := apimodels.MapToModel(v)
-		_, err := c.client.
+		data, err := compressJson(model)
+		if err != nil {
+			failed++
+			writeerr(&sb, err.Error())
+			continue
+		}
+
+		resp, err := c.client.
 			R().
-			SetBody(model).
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Content-Encoding", "gzip").
+			SetHeader("Accept-Encoding", "gzip").
+			SetBody(data).
 			Post("/update/")
+
+		if !resp.IsSuccess() {
+			failed++
+			writeerr(&sb, "failed request")
+			continue
+		}
 
 		if err != nil {
 			failed++
-			sb.WriteString(" - ")
-			sb.WriteString(err.Error())
-			sb.WriteString("\n")
+			writeerr(&sb, err.Error())
 		}
 	}
 
@@ -79,4 +96,31 @@ func (c *Collector) ReportMetrics() {
 	}
 
 	c.logger.Printf("%d metrics reported, %d failed\n%v", len(c.metrics)-failed, failed, sb.String())
+}
+
+func compressJson(model apimodels.Metric) ([]byte, error) {
+	data, err := json.Marshal(model)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := bytes.Buffer{}
+	cw := gzip.NewWriter(&buf)
+
+	_, err = cw.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = cw.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func writeerr(sb *strings.Builder, err string) {
+	sb.WriteString(" - ")
+	sb.WriteString(err)
+	sb.WriteString("\n")
 }

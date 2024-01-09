@@ -26,6 +26,7 @@ func Report(db storage.Storage) http.HandlerFunc {
 
 		slices.Sort(result)
 
+		w.Header().Set("Content-Type", "text/html")
 		err := reportTemplate.Execute(w, result)
 		if err != nil {
 			logger.Log.Error("error occurred", zap.String("error", err.Error()))

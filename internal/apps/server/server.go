@@ -29,6 +29,7 @@ func Run(cfg Config) error {
 func createRouter(db storage.Storage) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middlewares.Logger)
+	router.Use(middlewares.Compressor)
 	router.Use(middleware.Recoverer)
 	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(db))
 	router.Post("/update/", handlers.UpdateByJSON(db))
