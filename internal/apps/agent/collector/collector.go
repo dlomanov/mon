@@ -70,19 +70,13 @@ func (c *Collector) ReportMetrics() {
 			continue
 		}
 
-		resp, err := c.client.
+		_, err = c.client.
 			R().
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Content-Encoding", "gzip").
 			SetHeader("Accept-Encoding", "gzip").
 			SetBody(data).
 			Post("/update/")
-
-		if !resp.IsSuccess() {
-			failed++
-			writeerr(&sb, "failed request")
-			continue
-		}
 
 		if err != nil {
 			failed++
