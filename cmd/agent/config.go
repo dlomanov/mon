@@ -31,18 +31,15 @@ func (r rawConfig) toConfig() agent.Config {
 func getConfig() agent.Config {
 	raw := rawConfig{}
 
-	err := env.Parse(&raw)
-	if err != nil {
-		panic(err)
-	}
-	if !raw.isEmpty() {
-		return raw.toConfig()
-	}
-
 	flag.StringVar(&raw.Addr, "a", "localhost:8080", "server address")
 	flag.Uint64Var(&raw.PollInterval, "p", 2, "metrics poll interval in seconds")
 	flag.Uint64Var(&raw.ReportInterval, "r", 10, "metrics poll interval in seconds")
 	flag.Parse()
+
+	err := env.Parse(&raw)
+	if err != nil {
+		panic(err)
+	}
 
 	return raw.toConfig()
 }
