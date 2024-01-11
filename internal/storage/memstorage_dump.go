@@ -5,7 +5,6 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"os"
-	"time"
 )
 
 func load(mem *MemStorage) error {
@@ -57,25 +56,12 @@ func load(mem *MemStorage) error {
 	return nil
 }
 
-func dump(mem *MemStorage, force bool) error {
-	path := mem.config.FileStoragePath
-
-	if path == "" {
-		mem.logger.Debug("dump disabled")
+func dump(mem *MemStorage) error {
+	if !canDump(mem) {
 		return nil
 	}
 
-	if len(mem.storage) == 0 {
-		mem.logger.Debug("nothing to dump")
-		return nil
-	}
-
-	if !force && time.Since(mem.lastDump) < mem.config.StoreInterval {
-		mem.logger.Debug("too early to dump")
-		return nil
-	}
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(mem.config.FileStoragePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
 		mem.logger.Error("failed to open file", zap.Error(err))
 		return err
@@ -97,9 +83,24 @@ func dump(mem *MemStorage, force bool) error {
 			zap.String("value", data.Value))
 	}
 
-	mem.lastDump = time.Now().UTC()
 	mem.logger.Debug("metrics dumped")
 	return nil
+}
+
+func canDump(mem *MemStorage) bool {
+	path := mem.config.FileStoragePath
+
+	if path == "" {
+		mem.logger.Debug("dump disabled")
+		return false
+	}
+
+	if len(mem.storage) == 0 {
+		mem.logger.Debug("nothing to dump")
+		return false
+	}
+
+	return true
 }
 
 type pair struct {

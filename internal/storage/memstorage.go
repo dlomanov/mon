@@ -12,10 +12,11 @@ func init() {
 
 func NewMemStorage(logger *zap.Logger, config Config) *MemStorage {
 	ms := &MemStorage{
-		mu:      sync.Mutex{},
-		storage: make(map[string]string),
-		logger:  logger,
-		config:  config,
+		mu:       sync.Mutex{},
+		storage:  make(map[string]string),
+		logger:   logger,
+		config:   config,
+		syncDump: config.StoreInterval == 0,
 	}
 	_ = load(ms)
 	return ms
@@ -26,7 +27,7 @@ type MemStorage struct {
 	storage  map[string]string
 	logger   *zap.Logger
 	config   Config
-	lastDump time.Time
+	syncDump bool
 }
 
 func (mem *MemStorage) All() map[string]string {
@@ -46,7 +47,10 @@ func (mem *MemStorage) Set(key, value string) {
 	defer mem.mu.Unlock()
 
 	mem.storage[key] = value
-	_ = dump(mem, false)
+
+	if mem.syncDump {
+		_ = dump(mem)
+	}
 }
 
 func (mem *MemStorage) Get(key string) (value string, ok bool) {
@@ -60,5 +64,22 @@ func (mem *MemStorage) Get(key string) (value string, ok bool) {
 func (mem *MemStorage) Close() error {
 	mem.mu.Lock()
 	defer mem.mu.Unlock()
-	return dump(mem, true)
+	return dump(mem)
+}
+
+func (mem *MemStorage) DumpLoop() error {
+	if mem.syncDump {
+		return nil
+	}
+	if !canDump(mem) {
+		return nil
+	}
+
+	for {
+		time.Sleep(mem.config.StoreInterval)
+		err := dump(mem)
+		if err != nil {
+			return err
+		}
+	}
 }
