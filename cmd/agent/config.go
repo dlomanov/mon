@@ -13,18 +13,11 @@ type rawConfig struct {
 	ReportInterval uint64 `env:"REPORT_INTERVAL"`
 }
 
-func (r rawConfig) isEmpty() bool {
-	return r.Addr == "" || r.PollInterval == 0 || r.ReportInterval == 0
-}
-
 func (r rawConfig) toConfig() agent.Config {
-	if r.isEmpty() {
-		panic("invalid configuration")
-	}
 	return agent.Config{
 		Addr:           r.Addr,
-		PollInterval:   time.Duration(int64(time.Second) * int64(r.PollInterval)),
-		ReportInterval: time.Duration(int64(time.Second) * int64(r.ReportInterval)),
+		PollInterval:   time.Duration(r.PollInterval) * time.Second,
+		ReportInterval: time.Duration(r.ReportInterval) * time.Second,
 	}
 }
 
