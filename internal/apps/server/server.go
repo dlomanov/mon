@@ -9,12 +9,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 )
 
 func Run(cfg Config) error {
-	db := storage.NewStorage()
-	r := createRouter(db)
 	err := logger.WithLevel(cfg.LogLevel)
 	if err != nil {
 		return err
@@ -23,6 +22,16 @@ func Run(cfg Config) error {
 	cfgStr := fmt.Sprintf("%+v", cfg)
 	logger.Log.Info("server running...", zap.String("cfg", cfgStr))
 
+	db := storage.NewMemStorage(
+		logger.Log,
+		storage.Config{
+			StoreInterval:   cfg.StoreInterval,
+			FileStoragePath: cfg.FileStoragePath,
+			Restore:         cfg.Restore,
+		})
+	defer func(db io.Closer) { _ = db.Close() }(db)
+
+	r := createRouter(db)
 	return http.ListenAndServe(cfg.Addr, r)
 }
 

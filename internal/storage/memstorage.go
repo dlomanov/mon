@@ -1,17 +1,35 @@
 package storage
 
-import "sync"
+import (
+	"go.uber.org/zap"
+	"sync"
+	"time"
+)
 
 func init() {
-	var _ Storage = (*memStorage)(nil)
+	var _ Storage = (*MemStorage)(nil)
 }
 
-type memStorage struct {
-	mu      sync.Mutex
-	storage map[string]string
+func NewMemStorage(logger *zap.Logger, config Config) *MemStorage {
+	ms := &MemStorage{
+		mu:      sync.Mutex{},
+		storage: make(map[string]string),
+		logger:  logger,
+		config:  config,
+	}
+	_ = load(ms)
+	return ms
 }
 
-func (mem *memStorage) All() map[string]string {
+type MemStorage struct {
+	mu       sync.Mutex
+	storage  map[string]string
+	logger   *zap.Logger
+	config   Config
+	lastDump time.Time
+}
+
+func (mem *MemStorage) All() map[string]string {
 	mem.mu.Lock()
 	defer mem.mu.Unlock()
 
@@ -23,17 +41,24 @@ func (mem *memStorage) All() map[string]string {
 	return result
 }
 
-func (mem *memStorage) Set(key, value string) {
+func (mem *MemStorage) Set(key, value string) {
 	mem.mu.Lock()
 	defer mem.mu.Unlock()
 
 	mem.storage[key] = value
+	_ = dump(mem, false)
 }
 
-func (mem *memStorage) Get(key string) (value string, ok bool) {
+func (mem *MemStorage) Get(key string) (value string, ok bool) {
 	mem.mu.Lock()
 	defer mem.mu.Unlock()
 
 	v, ok := mem.storage[key]
 	return v, ok
+}
+
+func (mem *MemStorage) Close() error {
+	mem.mu.Lock()
+	defer mem.mu.Unlock()
+	return dump(mem, true)
 }
