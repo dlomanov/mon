@@ -20,12 +20,12 @@ func MapToEntity(model Metric) (entity entities.Metric, err error) {
 	}
 
 	entity.MetricsKey = key
-
-	if key.Type == entities.MetricGauge && model.Value != nil {
+	switch {
+	case key.Type == entities.MetricGauge && model.Value != nil:
 		entity.Value = model.Value
-	} else if key.Type == entities.MetricCounter && model.Delta != nil {
+	case key.Type == entities.MetricCounter && model.Delta != nil:
 		entity.Delta = model.Delta
-	} else {
+	default:
 		err = ErrInvalidMetricValue.Newf("invalid value for metrics type %s", key.Type)
 	}
 
@@ -34,22 +34,19 @@ func MapToEntity(model Metric) (entity entities.Metric, err error) {
 
 func MapToEntityKey(key MetricKey) (entityKey entities.MetricsKey, err error) {
 	metricType, ok := entities.ParseMetricType(key.Type)
+
 	if !ok {
-		err = ErrInvalidMetricType.Newf("unknown entity type %s", key.Type)
-		return entityKey, err
+		return entityKey, ErrInvalidMetricType.Newf("unknown entity type %s", key.Type)
 	}
 
 	if key.Name == "" {
-		err = ErrInvalidMetricName.Newf("empty entity name")
-		return entityKey, err
+		return entityKey, ErrInvalidMetricName.Newf("empty entity name")
 	}
 
-	entityKey = entities.MetricsKey{
+	return entities.MetricsKey{
 		Name: key.Name,
 		Type: metricType,
-	}
-
-	return entityKey, err
+	}, nil
 }
 
 func MapToModel(entity entities.Metric) Metric {

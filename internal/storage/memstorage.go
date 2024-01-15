@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"go.uber.org/zap"
 	"sync"
 	"time"
@@ -67,7 +68,7 @@ func (mem *MemStorage) Close() error {
 	return dump(mem)
 }
 
-func (mem *MemStorage) DumpLoop() error {
+func (mem *MemStorage) DumpLoop(ctx context.Context) error {
 	if mem.syncDump {
 		return nil
 	}
@@ -75,10 +76,15 @@ func (mem *MemStorage) DumpLoop() error {
 		return nil
 	}
 
+	d := mem.config.StoreInterval
 	for {
-		time.Sleep(mem.config.StoreInterval)
-		err := dump(mem)
-		if err != nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(d):
+		}
+
+		if err := dump(mem); err != nil {
 			return err
 		}
 	}

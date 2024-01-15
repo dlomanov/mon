@@ -29,27 +29,26 @@ func FromRouteParams(r *http.Request) (model apimodels.Metric, err error) {
 		return model, err
 	}
 
-	if metricType == entities.MetricGauge {
+	switch {
+	case metricType == entities.MetricGauge:
 		var value float64
 		value, err = strconv.ParseFloat(valueString, 64)
 		if err != nil {
-			err = errors.Join(ErrInvalidMetricValue.New(), err)
-		} else {
-			model.Value = &value
+			return model, errors.Join(ErrInvalidMetricValue.New(), err)
 		}
-	} else if metricType == entities.MetricCounter {
+		model.Value = &value
+	case metricType == entities.MetricCounter:
 		var delta int64
 		delta, err = strconv.ParseInt(valueString, 10, 64)
 		if err != nil {
-			err = errors.Join(ErrInvalidMetricValue.New(), err)
-		} else {
-			model.Delta = &delta
+			return model, errors.Join(ErrInvalidMetricValue.New(), err)
 		}
-	} else {
-		err = ErrUnsupportedMetricType.New(model.Type)
+		model.Delta = &delta
+	default:
+		return model, ErrUnsupportedMetricType.New(model.Type)
 	}
 
-	return model, err
+	return model, nil
 }
 
 func FromJSON(r *http.Request) (model apimodels.Metric, err error) {
