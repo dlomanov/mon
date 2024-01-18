@@ -13,8 +13,10 @@ type rawConfig struct {
 	StoreInterval   uint64 `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
-	DatabaseDSN     string
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
+
+const defaultDSN = "host=localhost port=5432 user=postgres password=1 dbname=postgres sslmode=disable"
 
 func getConfig() server.Config {
 	raw := rawConfig{}
@@ -24,7 +26,7 @@ func getConfig() server.Config {
 	flag.Uint64Var(&raw.StoreInterval, "STORE_INTERVAL", 300, "store interval in seconds")
 	flag.StringVar(&raw.FileStoragePath, "FILE_STORAGE_PATH", "/tmp/metrics-db.json", "file storage path")
 	flag.BoolVar(&raw.Restore, "RESTORE", true, "restore metrics from file at server start")
-	flag.StringVar(&raw.DatabaseDSN, "d", "host=localhost port=5432 user=postgres password=1 dbname=postgres sslmode=disable", "database DSN")
+	flag.StringVar(&raw.DatabaseDSN, "d", defaultDSN, "database DSN")
 	flag.Parse()
 
 	err := env.Parse(&raw)
