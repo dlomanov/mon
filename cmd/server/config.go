@@ -3,26 +3,38 @@ package main
 import (
 	"flag"
 	"github.com/caarlos0/env/v10"
+	"github.com/dlomanov/mon/internal/apps/server"
+	"time"
 )
 
-type config struct {
-	Addr string `env:"ADDRESS"`
+type rawConfig struct {
+	Addr            string `env:"ADDRESS"`
+	LogLevel        string `env:"LOG_LEVEL"`
+	StoreInterval   uint64 `env:"STORE_INTERVAL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	Restore         bool   `env:"RESTORE"`
 }
 
-func (cfg config) isEmpty() bool {
-	return cfg.Addr == ""
-}
+func getConfig() server.Config {
+	raw := rawConfig{}
 
-func getConfig() (cfg config) {
-	err := env.Parse(&cfg)
+	flag.StringVar(&raw.Addr, "a", "localhost:8080", "server address")
+	flag.StringVar(&raw.LogLevel, "l", "info", "log level")
+	flag.Uint64Var(&raw.StoreInterval, "STORE_INTERVAL", 300, "store interval in seconds")
+	flag.StringVar(&raw.FileStoragePath, "FILE_STORAGE_PATH", "/tmp/metrics-db.json", "file storage path")
+	flag.BoolVar(&raw.Restore, "RESTORE", true, "restore metrics from file at server start")
+	flag.Parse()
+
+	err := env.Parse(&raw)
 	if err != nil {
 		panic(err)
 	}
-	if !cfg.isEmpty() {
-		return cfg
-	}
 
-	flag.StringVar(&cfg.Addr, "a", "localhost:8080", "server address")
-	flag.Parse()
-	return
+	return server.Config{
+		Addr:            raw.Addr,
+		LogLevel:        raw.LogLevel,
+		StoreInterval:   time.Duration(raw.StoreInterval) * time.Second,
+		FileStoragePath: raw.FileStoragePath,
+		Restore:         raw.Restore,
+	}
 }

@@ -1,16 +1,18 @@
 package collector
 
 import (
-	"github.com/dlomanov/mon/internal/entities/metrics"
-	"github.com/dlomanov/mon/internal/entities/metrics/counter"
-	"github.com/dlomanov/mon/internal/entities/metrics/gauge"
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
+	"github.com/dlomanov/mon/internal/apps/apimodels"
+	"github.com/dlomanov/mon/internal/entities"
 	"github.com/go-resty/resty/v2"
 	"log"
 	"strings"
 )
 
 type Collector struct {
-	metrics map[string]metrics.Metric
+	metrics map[string]entities.Metric
 	logger  *log.Logger
 	client  *resty.Client
 }
@@ -18,7 +20,7 @@ type Collector struct {
 func NewCollector(addr string, logger *log.Logger) Collector {
 	return Collector{
 		client:  createClient(addr),
-		metrics: make(map[string]metrics.Metric),
+		metrics: make(map[string]entities.Metric),
 		logger:  logger,
 	}
 }
@@ -33,18 +35,22 @@ func createClient(addr string) *resty.Client {
 }
 
 func (c *Collector) UpdateGauge(name string, value float64) {
-	v := gauge.Metric{Name: name, Value: value}
-	c.metrics[v.Key()] = v
+	key := entities.MetricsKey{Name: name, Type: entities.MetricGauge}
+	v := entities.Metric{MetricsKey: key, Value: &value}
+	c.metrics[key.String()] = v
 }
 
 func (c *Collector) UpdateCounter(name string, value int64) {
-	v := counter.Metric{Name: name, Value: value}
-	key := v.Key()
-	old, ok := c.metrics[key]
+	key := entities.MetricsKey{Name: name, Type: entities.MetricCounter}
+	keyString := key.String()
+	v := entities.Metric{MetricsKey: key, Delta: &value}
+
+	old, ok := c.metrics[keyString]
 	if ok {
-		v.Value += (old.(counter.Metric)).Value
+		*v.Delta += *old.Delta
 	}
-	c.metrics[key] = v
+
+	c.metrics[keyString] = v
 }
 
 func (c *Collector) LogUpdated() {
@@ -56,19 +62,25 @@ func (c *Collector) ReportMetrics() {
 
 	failed := 0
 	for _, v := range c.metrics {
-		mtype, name, value := v.Deconstruct()
-		_, err := c.client.
+		model := apimodels.MapToModel(v)
+		data, err := compressJSON(model)
+		if err != nil {
+			failed++
+			writeerr(&sb, err.Error())
+			continue
+		}
+
+		_, err = c.client.
 			R().
-			SetPathParam("type", mtype).
-			SetPathParam("name", name).
-			SetPathParam("value", value).
-			Post("/update/{type}/{name}/{value}")
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Content-Encoding", "gzip").
+			SetHeader("Accept-Encoding", "gzip").
+			SetBody(data).
+			Post("/update/")
 
 		if err != nil {
 			failed++
-			sb.WriteString(" - ")
-			sb.WriteString(err.Error())
-			sb.WriteString("\n")
+			writeerr(&sb, err.Error())
 		}
 	}
 
@@ -78,4 +90,31 @@ func (c *Collector) ReportMetrics() {
 	}
 
 	c.logger.Printf("%d metrics reported, %d failed\n%v", len(c.metrics)-failed, failed, sb.String())
+}
+
+func compressJSON(model apimodels.Metric) ([]byte, error) {
+	data, err := json.Marshal(model)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := bytes.Buffer{}
+	cw := gzip.NewWriter(&buf)
+
+	_, err = cw.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = cw.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func writeerr(sb *strings.Builder, err string) {
+	sb.WriteString(" - ")
+	sb.WriteString(err)
+	sb.WriteString("\n")
 }
