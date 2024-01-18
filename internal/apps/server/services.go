@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"github.com/dlomanov/mon/internal/apps/server/logging"
 	"github.com/dlomanov/mon/internal/storage"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
 
@@ -16,20 +18,27 @@ func configureServices(
 		return nil, err
 	}
 
+	db, err := sql.Open("pgx", cfg.DatabaseDSN)
+	if err != nil {
+		return nil, err
+	}
+
 	stg := configureStorage(logger, cfg)
 	return &serviceContainer{
+		Context:    ctx,
+		Logger:     logger,
+		DB:         db,
 		MemStorage: stg,
 		Storage:    stg,
-		Logger:     logger,
-		Context:    ctx,
 	}, nil
 }
 
 type serviceContainer struct {
+	Context    context.Context
+	DB         *sql.DB
+	Logger     *zap.Logger
 	MemStorage *storage.MemStorage
 	Storage    storage.Storage
-	Logger     *zap.Logger
-	Context    context.Context
 }
 
 func configureStorage(logger *zap.Logger, cfg Config) *storage.MemStorage {

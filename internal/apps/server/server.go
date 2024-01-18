@@ -41,8 +41,10 @@ func Run(cfg Config) error {
 }
 
 func createRouter(container *serviceContainer) *chi.Mux {
-	stg := container.Storage
+	ctx := container.Context
 	logger := container.Logger
+	stg := container.Storage
+	db := container.DB
 
 	router := chi.NewRouter()
 	router.Use(middlewares.Logger(logger))
@@ -52,6 +54,7 @@ func createRouter(container *serviceContainer) *chi.Mux {
 	router.Post("/update/", handlers.UpdateByJSON(logger, stg))
 	router.Get("/value/{type}/{name}", handlers.GetByParams(logger, stg))
 	router.Post("/value/", handlers.GetByJSON(logger, stg))
+	router.Get("/ping", handlers.PingDB(ctx, logger, db))
 	router.Get("/", handlers.Report(logger, stg))
 
 	return router
