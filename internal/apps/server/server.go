@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dlomanov/mon/internal/apps/server/handlers"
-	"github.com/dlomanov/mon/internal/apps/server/logger"
 	"github.com/dlomanov/mon/internal/apps/server/middlewares"
 	"github.com/dlomanov/mon/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -18,44 +17,43 @@ import (
 )
 
 func Run(cfg Config) error {
-	err := logger.WithLevel(cfg.LogLevel)
-	if err != nil {
-		return err
-	}
-
 	cfgStr := fmt.Sprintf("%+v", cfg)
-	logger.Log.Info("server running...", zap.String("cfg", cfgStr))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	db := storage.NewMemStorage(
-		logger.Log,
-		storage.Config{
-			StoreInterval:   cfg.StoreInterval,
-			FileStoragePath: cfg.FileStoragePath,
-			Restore:         cfg.Restore,
-		})
+	container, err := configureServices(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	stg := container.MemStorage
+	logger := container.Logger
 
-	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(db)}
-	go dumpLoop(ctx, db, logger.Log)
-	go catchTerminate(server, logger.Log, func() {
+	logger.Info("server running...", zap.String("cfg", cfgStr))
+
+	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(container)}
+	go dumpLoop(ctx, stg, logger)
+	go catchTerminate(server, logger, func() {
 		cancel()
-		_ = db.Close()
+		_ = stg.Close()
 	})
 	return server.ListenAndServe()
 }
 
-func createRouter(db storage.Storage) *chi.Mux {
+func createRouter(container *serviceContainer) *chi.Mux {
+	stg := container.Storage
+	logger := container.Logger
+
 	router := chi.NewRouter()
-	router.Use(middlewares.Logger)
+	router.Use(middlewares.Logger(logger))
 	router.Use(middlewares.Compressor)
 	router.Use(middleware.Recoverer)
-	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(db))
-	router.Post("/update/", handlers.UpdateByJSON(db))
-	router.Get("/value/{type}/{name}", handlers.GetByParams(db))
-	router.Post("/value/", handlers.GetByJSON(db))
-	router.Get("/", handlers.Report(db))
+	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(logger, stg))
+	router.Post("/update/", handlers.UpdateByJSON(logger, stg))
+	router.Get("/value/{type}/{name}", handlers.GetByParams(logger, stg))
+	router.Post("/value/", handlers.GetByJSON(logger, stg))
+	router.Get("/", handlers.Report(logger, stg))
+
 	return router
 }
 
@@ -80,10 +78,10 @@ func catchTerminate(
 
 func dumpLoop(
 	ctx context.Context,
-	db *storage.MemStorage,
+	stg *storage.MemStorage,
 	logger *zap.Logger,
 ) {
-	err := db.DumpLoop(ctx)
+	err := stg.DumpLoop(ctx)
 	if errors.Is(err, context.Canceled) {
 		logger.Debug("dump loop cancelled", zap.Error(err))
 		return

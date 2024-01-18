@@ -5,6 +5,7 @@ import (
 	"github.com/dlomanov/mon/internal/apps/server/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -193,8 +194,12 @@ func TestServer(t *testing.T) {
 		},
 	}
 
-	db := mocks.NewStorage()
-	r := createRouter(db)
+	stg := mocks.NewStorage()
+	r := createRouter(&serviceContainer{
+		Storage: stg,
+		Logger:  zap.NewNop(),
+		Context: nil,
+	})
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 

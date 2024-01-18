@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/dlomanov/mon/internal/apps/server/logger"
 	"github.com/dlomanov/mon/internal/storage"
 	"go.uber.org/zap"
 	"html/template"
@@ -13,7 +12,7 @@ import (
 var reportTemplate = template.
 	Must(template.New("report").Parse(`{{range $val := .}}<p>{{$val}}</p>{{end}}`))
 
-func Report(db storage.Storage) http.HandlerFunc {
+func Report(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		values := db.All()
 		result := make([]string, len(values))
@@ -29,7 +28,7 @@ func Report(db storage.Storage) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		err := reportTemplate.Execute(w, result)
 		if err != nil {
-			logger.Log.Error("error occurred", zap.String("error", err.Error()))
+			logger.Error("error occurred", zap.String("error", err.Error()))
 			return
 		}
 	}
