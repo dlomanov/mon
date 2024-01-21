@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/dlomanov/mon/internal/apps/server/handlers"
@@ -26,8 +27,14 @@ func Run(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	stg := container.MemStorage
+
 	logger := container.Logger
+
+	db := container.DB
+	defer func(db *sql.DB) { _ = db.Close() }(db)
+
+	stg := container.MemStorage
+	defer func(stg *storage.MemStorage) { _ = stg.Close() }(stg)
 
 	logger.Info("server running...", zap.String("cfg", cfgStr))
 
@@ -36,6 +43,7 @@ func Run(cfg Config) error {
 	go catchTerminate(server, logger, func() {
 		cancel()
 		_ = stg.Close()
+		_ = db.Close()
 	})
 	return server.ListenAndServe()
 }

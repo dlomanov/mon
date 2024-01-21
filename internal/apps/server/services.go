@@ -18,12 +18,13 @@ func configureServices(
 		return nil, err
 	}
 
-	db, err := sql.Open("pgx", cfg.DatabaseDSN)
+	db, err := createDB(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	stg := configureStorage(logger, cfg)
+	stg := createStorage(logger, db, cfg)
+
 	return &serviceContainer{
 		Context:    ctx,
 		Logger:     logger,
@@ -41,9 +42,19 @@ type serviceContainer struct {
 	Storage    storage.Storage
 }
 
-func configureStorage(logger *zap.Logger, cfg Config) *storage.MemStorage {
-	return storage.NewMemStorage(
-		logger,
+func createDB(cfg Config) (*sql.DB, error) {
+	if cfg.DatabaseDSN == "" {
+		return nil, nil
+	}
+	return sql.Open("pgx", cfg.DatabaseDSN)
+}
+
+func createStorage(
+	logger *zap.Logger,
+	db *sql.DB,
+	cfg Config,
+) *storage.MemStorage {
+	return storage.NewMemStorage(logger, db,
 		storage.Config{
 			StoreInterval:   cfg.StoreInterval,
 			FileStoragePath: cfg.FileStoragePath,

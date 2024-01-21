@@ -15,6 +15,12 @@ func PingDB(ctx context.Context, logger *zap.Logger, db *sql.DB) http.HandlerFun
 		timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
+		if db == nil {
+			logger.Debug("DB is not configured")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		if err := db.PingContext(timeoutCtx); err != nil {
 			logger.Error("failed ping to DB", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)

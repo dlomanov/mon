@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"database/sql"
+	"github.com/dlomanov/mon/internal/storage/dumper"
 	"go.uber.org/zap"
 	"sync"
 	"time"
@@ -11,16 +13,40 @@ func init() {
 	var _ Storage = (*MemStorage)(nil)
 }
 
-func NewMemStorage(logger *zap.Logger, config Config) *MemStorage {
-	ms := &MemStorage{
+func NewMemStorage(
+	logger *zap.Logger,
+	db *sql.DB,
+	config Config,
+) *MemStorage {
+	mem := &MemStorage{
 		mu:       sync.Mutex{},
 		storage:  make(map[string]string),
 		logger:   logger,
 		config:   config,
 		syncDump: config.StoreInterval == 0,
+		dumper:   createDumper(logger, db, config),
+		closed:   false,
 	}
-	_ = load(ms)
-	return ms
+	_ = mem.load()
+	return mem
+}
+
+func createDumper(
+	logger *zap.Logger,
+	db *sql.DB,
+	config Config,
+) dumper.Dumper {
+	switch {
+	case db != nil:
+		logger.Debug("db dumper selected")
+		return dumper.NewDBDumper(logger, db)
+	case config.FileStoragePath != "":
+		logger.Debug("file dumper selected")
+		return dumper.NewFileDumper(logger, config.FileStoragePath, config.Restore)
+	default:
+		logger.Debug("noop dumper selected")
+		return dumper.NewNoopDumper()
+	}
 }
 
 type MemStorage struct {
@@ -29,6 +55,8 @@ type MemStorage struct {
 	logger   *zap.Logger
 	config   Config
 	syncDump bool
+	dumper   dumper.Dumper
+	closed   bool
 }
 
 func (mem *MemStorage) All() map[string]string {
@@ -50,7 +78,7 @@ func (mem *MemStorage) Set(key, value string) {
 	mem.storage[key] = value
 
 	if mem.syncDump {
-		_ = dump(mem)
+		_ = mem.dump()
 	}
 }
 
@@ -63,16 +91,24 @@ func (mem *MemStorage) Get(key string) (value string, ok bool) {
 }
 
 func (mem *MemStorage) Close() error {
+	if mem.closed {
+		return nil
+	}
+
 	mem.mu.Lock()
-	defer mem.mu.Unlock()
-	return dump(mem)
+	mem.closed = true
+	mem.mu.Unlock()
+
+	return mem.dump()
 }
 
 func (mem *MemStorage) DumpLoop(ctx context.Context) error {
 	if mem.syncDump {
 		return nil
 	}
-	if !canDump(mem) {
+
+	if _, ok := mem.dumper.(dumper.NoopDumper); ok {
+		mem.logger.Debug("dump is disabled")
 		return nil
 	}
 
@@ -84,8 +120,16 @@ func (mem *MemStorage) DumpLoop(ctx context.Context) error {
 		case <-time.After(d):
 		}
 
-		if err := dump(mem); err != nil {
+		if err := mem.dump(); err != nil {
 			return err
 		}
 	}
+}
+
+func (mem *MemStorage) load() error {
+	return mem.dumper.Load(&mem.storage)
+}
+
+func (mem *MemStorage) dump() error {
+	return mem.dumper.Dump(mem.storage)
 }
