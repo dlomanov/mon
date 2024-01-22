@@ -117,7 +117,7 @@ func (s *Storage) DumpLoop(ctx context.Context) error {
 		case <-time.After(d):
 		}
 
-		if err := s.dump(); err != nil {
+		if err := s.dumpLock(); err != nil {
 			return err
 		}
 	}
@@ -128,5 +128,11 @@ func (s *Storage) load() error {
 }
 
 func (s *Storage) dump() error {
+	return s.dumper.Dump(*s.internal)
+}
+
+func (s *Storage) dumpLock() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.dumper.Dump(*s.internal)
 }
