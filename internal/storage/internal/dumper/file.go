@@ -55,10 +55,10 @@ func (f *FileDumper) Load(dest *mem.Storage) error {
 	defer func(file *os.File) { _ = file.Close() }(file)
 
 	m := make(mem.Storage)
-	data := metric{}
 	dec := json.NewDecoder(file)
 
 	for {
+		data := metric{}
 		if err = dec.Decode(&data); err == io.EOF {
 			break
 		}
@@ -74,13 +74,8 @@ func (f *FileDumper) Load(dest *mem.Storage) error {
 			Value: data.Value,
 			Delta: data.Delta,
 		}
-		key := entity.String()
 
-		m[key] = entity
-
-		f.logger.Debug("- load metric",
-			zap.String("key", key),
-			zap.String("value", entity.StringValue()))
+		m[entity.String()] = entity
 	}
 
 	*dest = m
@@ -121,10 +116,6 @@ func (f *FileDumper) Dump(source mem.Storage) error {
 				zap.String("value", valueStr))
 			return err
 		}
-
-		f.logger.Debug("- dump metric",
-			zap.String("key", k),
-			zap.String("value", valueStr))
 	}
 
 	f.logger.Debug("metrics dumped")
