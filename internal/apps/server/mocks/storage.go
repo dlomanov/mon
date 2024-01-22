@@ -1,13 +1,13 @@
 package mocks
 
 import (
-	"github.com/dlomanov/mon/internal/apps/server/handlers"
+	"github.com/dlomanov/mon/internal/apps/server/handlers/interfaces"
 	"github.com/dlomanov/mon/internal/entities"
 	"sync"
 )
 
 func init() {
-	var _ handlers.Storage = (*MockStorage)(nil)
+	var _ interfaces.Storage = (*MockStorage)(nil)
 }
 
 func NewStorage() *MockStorage {

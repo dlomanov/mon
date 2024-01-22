@@ -215,6 +215,63 @@ func TestServer(t *testing.T) {
 	}
 }
 
+func TestServer_UpdatesByJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "set metrics 1",
+			args: args{
+				method:      http.MethodPost,
+				path:        "/updates/",
+				contentType: "application/json; charset=utf-8",
+				body:        `[{"id":"key","type":"gauge","value":3.0000003},{"id":"key","type":"counter","delta":1}]`,
+			},
+			want: want{
+				code:        http.StatusOK,
+				contentType: "application/json",
+				body:        `[{"id":"key","type":"gauge","value":3.0000003},{"id":"key","type":"counter","delta":1}]`,
+			},
+		},
+		{
+			name: "set metrics 2",
+			args: args{
+				method:      http.MethodPost,
+				path:        "/updates/",
+				contentType: "application/json; charset=utf-8",
+				body:        `[{"id":"key","type":"gauge","value":1.0000001},{"id":"key","type":"counter","delta":2}]`,
+			},
+			want: want{
+				code:        http.StatusOK,
+				contentType: "application/json",
+				body:        `[{"id":"key","type":"gauge","value":1.0000001},{"id":"key","type":"counter","delta":3}]`,
+			},
+		},
+	}
+
+	stg := mocks.NewStorage()
+	r := createRouter(&serviceContainer{
+		Storage: stg,
+		Logger:  zap.NewNop(),
+		Context: nil,
+	})
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, body := testRequest(t, ts, tt.args)
+			_ = resp.Body.Close()
+
+			assert.Equal(t, tt.want.code, resp.StatusCode, "Unexpected status code")
+			assert.Equal(t, tt.want.body, strings.TrimSuffix(body, "\n"))
+			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
+		})
+	}
+}
+
 type args struct {
 	method      string
 	path        string

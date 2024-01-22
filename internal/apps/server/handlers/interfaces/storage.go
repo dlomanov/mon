@@ -1,4 +1,4 @@
-package handlers
+package interfaces
 
 import "github.com/dlomanov/mon/internal/entities"
 

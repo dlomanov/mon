@@ -6,28 +6,29 @@ import (
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/apps/apimodels"
 	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
+	"github.com/dlomanov/mon/internal/apps/server/handlers/interfaces"
 	"github.com/dlomanov/mon/internal/entities"
 	"go.uber.org/zap"
 	"net/http"
 )
 
-func UpdateByParams(logger *zap.Logger, db Storage) http.HandlerFunc {
+func UpdateByParams(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metrics, err := bind.FromRouteParams(r)
+		metric, err := bind.MetricFromRouteParams(r)
 		if err != nil {
 			logger.Error("error occurred during model binding", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		entity, err := apimodels.MapToEntity(metrics)
+		entity, err := apimodels.MapToEntity(metric)
 		if err != nil {
 			logger.Error("error occurred during model mapping", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		_, err = handle(entity, db)
+		_, err = handle(db, entity)
 		if err != nil {
 			logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
@@ -38,23 +39,23 @@ func UpdateByParams(logger *zap.Logger, db Storage) http.HandlerFunc {
 	}
 }
 
-func UpdateByJSON(logger *zap.Logger, db Storage) http.HandlerFunc {
+func UpdatesByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metrics, err := bind.FromJSON(r)
+		metrics, err := bind.MetricsFromJSON(r)
 		if err != nil {
 			logger.Error("error occurred during model binding", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		entity, err := apimodels.MapToEntity(metrics)
+		values, err := apimodels.MapToEntities(metrics)
 		if err != nil {
 			logger.Error("error occurred during model mapping", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		processed, err := handle(entity, db)
+		processed, err := handle(db, values...)
 		if err != nil {
 			logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
@@ -62,7 +63,7 @@ func UpdateByJSON(logger *zap.Logger, db Storage) http.HandlerFunc {
 		}
 
 		w.Header().Set(HeaderContentType, "application/json")
-		err = json.NewEncoder(w).Encode(apimodels.MapToModel(processed))
+		err = json.NewEncoder(w).Encode(apimodels.MapToModels(processed))
 		if err != nil {
 			logger.Error("error occurred during response writing", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
@@ -71,17 +72,60 @@ func UpdateByJSON(logger *zap.Logger, db Storage) http.HandlerFunc {
 	}
 }
 
-func handle(entity entities.Metric, db Storage) (processed entities.Metric, err error) {
-	switch entity.Type {
-	case entities.MetricGauge:
-		processed, err = HandleGauge(entity, db)
-	case entities.MetricCounter:
-		processed, err = HandleCounter(entity, db)
-	default:
-		err = apperrors.ErrUnsupportedMetricType.New(entity.Type)
+func UpdateByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metric, err := bind.MetricFromJSON(r)
+		if err != nil {
+			logger.Error("error occurred during model binding", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		entity, err := apimodels.MapToEntity(metric)
+		if err != nil {
+			logger.Error("error occurred during model mapping", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		processed, err := handle(db, entity)
+		if err != nil {
+			logger.Error("error occurred during metric update", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		w.Header().Set(HeaderContentType, "application/json")
+		err = json.NewEncoder(w).Encode(apimodels.MapToModel(processed[0]))
+		if err != nil {
+			logger.Error("error occurred during response writing", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func handle(db interfaces.Storage, metrics ...entities.Metric) (processedMetrics []entities.Metric, err error) {
+	processedMetrics = make([]entities.Metric, 0)
+
+	for _, entity := range metrics {
+		var processed entities.Metric
+		switch entity.Type {
+		case entities.MetricGauge:
+			processed, err = HandleGauge(entity, db)
+		case entities.MetricCounter:
+			processed, err = HandleCounter(entity, db)
+		default:
+			err = apperrors.ErrUnsupportedMetricType.New(entity.Type)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		processedMetrics = append(processedMetrics, processed)
 	}
 
-	return processed, err
+	return processedMetrics, nil
 }
 
 func statusCode(err error) int {
@@ -108,12 +152,12 @@ func statusCode(err error) int {
 	}
 }
 
-func HandleGauge(metric entities.Metric, db Storage) (entities.Metric, error) {
+func HandleGauge(metric entities.Metric, db interfaces.Storage) (entities.Metric, error) {
 	db.Set(metric)
 	return metric, nil
 }
 
-func HandleCounter(metric entities.Metric, db Storage) (entities.Metric, error) {
+func HandleCounter(metric entities.Metric, db interfaces.Storage) (entities.Metric, error) {
 	key := metric.MetricsKey
 
 	old, ok := db.Get(key)

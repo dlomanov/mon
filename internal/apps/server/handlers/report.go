@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/dlomanov/mon/internal/apps/server/handlers/interfaces"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 var reportTemplate = template.
 	Must(template.New("report").Parse(`{{range $val := .}}<p>{{$val}}</p>{{end}}`))
 
-func Report(logger *zap.Logger, storage Storage) http.HandlerFunc {
+func Report(logger *zap.Logger, storage interfaces.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		values := storage.All()
 		result := make([]string, 0, len(values))

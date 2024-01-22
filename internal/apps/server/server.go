@@ -60,6 +60,7 @@ func createRouter(container *serviceContainer) *chi.Mux {
 	router.Use(middleware.Recoverer)
 	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(logger, stg))
 	router.Post("/update/", handlers.UpdateByJSON(logger, stg))
+	router.Post("/updates/", handlers.UpdatesByJSON(logger, stg))
 	router.Get("/value/{type}/{name}", handlers.GetByParams(logger, stg))
 	router.Post("/value/", handlers.GetByJSON(logger, stg))
 	router.Get("/ping", handlers.PingDB(ctx, logger, db))

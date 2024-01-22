@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
-	"github.com/dlomanov/mon/internal/apps/server/handlers"
+	"github.com/dlomanov/mon/internal/apps/server/handlers/interfaces"
 	"github.com/dlomanov/mon/internal/apps/server/logging"
 	"github.com/dlomanov/mon/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	var _ handlers.Storage = (*storage.Storage)(nil)
+	var _ interfaces.Storage = (*storage.Storage)(nil)
 }
 
 func configureServices(
@@ -44,7 +44,7 @@ type serviceContainer struct {
 	DB         *sql.DB
 	Logger     *zap.Logger
 	MemStorage *storage.Storage
-	Storage    handlers.Storage
+	Storage    interfaces.Storage
 }
 
 func createDB(cfg Config) (*sql.DB, error) {
