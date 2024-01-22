@@ -58,6 +58,10 @@ func (c *Collector) LogUpdated() {
 }
 
 func (c *Collector) ReportMetrics() {
+	if len(c.metrics) == 0 {
+		return
+	}
+
 	data := make([]apimodels.Metric, 0, len(c.metrics))
 	for _, v := range c.metrics {
 		model := apimodels.MapToModel(v)
