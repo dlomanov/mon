@@ -2,6 +2,7 @@ package dumper
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/entities"
 	"go.uber.org/zap"
@@ -106,27 +107,46 @@ func (d *DBDumper) Dump(source map[string]string) error {
 
 	d.logger.Debug("dumping metrics")
 
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`
+		insert into metrics ("name", "type", "delta", "value") values ($1, $2, $3, $4)
+		on conflict ("name", "type")
+		    do update
+		    	set "delta" = excluded."delta",
+		    	    "value" = excluded."value";`)
+	if err != nil {
+		d.logger.Error("metric upsert query preparing failed", zap.Error(err))
+		return errors.Join(tx.Rollback(), err)
+	}
+	defer func(stmt *sql.Stmt) { _ = stmt.Close() }(stmt)
+
 	for k, v := range source {
 		mk, err := entities.NewMetricsKey(k)
 		if err != nil {
 			d.logger.Error("metric key parsing failed", zap.Error(err))
-			return err
+			return errors.Join(tx.Rollback(), err)
 		}
 
 		m, err := entities.NewMetric(mk, v)
 		if err != nil {
 			d.logger.Error("metric value parsing failed", zap.Error(err))
-			return err
+			return errors.Join(tx.Rollback(), err)
 		}
 
-		_, err = d.db.Exec(`
-insert into metrics ("name", "type", "delta", "value") values ($1, $2, $3, $4)
-on conflict ("name", "type") do update set "delta" = excluded."delta", "value" = excluded."value";`,
-			m.Name, string(m.Type), m.Delta, m.Value)
+		_, err = stmt.Exec(m.Name, string(m.Type), m.Delta, m.Value)
 		if err != nil {
 			d.logger.Error("metric upsert failed", zap.Error(err))
-			return err
+			return errors.Join(tx.Rollback(), err)
 		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		d.logger.Error("metric upsert commit failed", zap.Error(err))
+		return err
 	}
 
 	d.logger.Debug("metrics dumped")
