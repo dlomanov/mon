@@ -28,7 +28,7 @@ func UpdateByParams(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc 
 			return
 		}
 
-		_, err = handle(db, entity)
+		_, err = handle(db, false, entity)
 		if err != nil {
 			logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
@@ -55,20 +55,14 @@ func UpdatesByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 			return
 		}
 
-		processed, err := handle(db, values...)
+		_, err = handle(db, false, values...)
 		if err != nil {
 			logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		w.Header().Set(HeaderContentType, "application/json")
-		err = json.NewEncoder(w).Encode(apimodels.MapToModels(processed))
-		if err != nil {
-			logger.Error("error occurred during response writing", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -88,7 +82,7 @@ func UpdateByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 			return
 		}
 
-		processed, err := handle(db, entity)
+		processed, err := handle(db, true, entity)
 		if err != nil {
 			logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
@@ -105,7 +99,11 @@ func UpdateByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 	}
 }
 
-func handle(db interfaces.Storage, metrics ...entities.Metric) (processedMetrics []entities.Metric, err error) {
+func handle(
+	db interfaces.Storage,
+	needResult bool,
+	metrics ...entities.Metric,
+) (processedMetrics []entities.Metric, err error) {
 	processedMetrics = make([]entities.Metric, 0)
 
 	for _, entity := range metrics {
@@ -122,7 +120,9 @@ func handle(db interfaces.Storage, metrics ...entities.Metric) (processedMetrics
 			return nil, err
 		}
 
-		processedMetrics = append(processedMetrics, processed)
+		if needResult {
+			processedMetrics = append(processedMetrics, processed)
+		}
 	}
 
 	return processedMetrics, nil

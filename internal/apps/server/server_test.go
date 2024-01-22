@@ -230,9 +230,7 @@ func TestServer_UpdatesByJSON(t *testing.T) {
 				body:        `[{"id":"key","type":"gauge","value":3.0000003},{"id":"key","type":"counter","delta":1}]`,
 			},
 			want: want{
-				code:        http.StatusOK,
-				contentType: "application/json",
-				body:        `[{"id":"key","type":"gauge","value":3.0000003},{"id":"key","type":"counter","delta":1}]`,
+				code: http.StatusOK,
 			},
 		},
 		{
@@ -244,9 +242,7 @@ func TestServer_UpdatesByJSON(t *testing.T) {
 				body:        `[{"id":"key","type":"gauge","value":1.0000001},{"id":"key","type":"counter","delta":2}]`,
 			},
 			want: want{
-				code:        http.StatusOK,
-				contentType: "application/json",
-				body:        `[{"id":"key","type":"gauge","value":1.0000001},{"id":"key","type":"counter","delta":3}]`,
+				code: http.StatusOK,
 			},
 		},
 	}
