@@ -5,8 +5,11 @@ import (
 	"errors"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage/internal/mem"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"sync"
+	"time"
 )
 
 func init() {
@@ -29,17 +32,42 @@ type DBDumper struct {
 	migrationUp bool
 }
 
+var delays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second, 0}
+
 func (d *DBDumper) Load(dest *mem.Storage) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-
-	db := d.db
-
 	d.logger.Debug("loading metrics")
 
+	var (
+		result mem.Storage
+		err    error
+	)
+	for _, t := range delays {
+		result, err = d.load()
+		var pgerr *pgconn.PgError
+		if errors.As(err, &pgerr) && pgerrcode.IsConnectionException(pgerr.Code) {
+			time.Sleep(t)
+		} else {
+			break
+		}
+	}
+	if err != nil {
+		d.logger.Debug("metrics loading  failed", zap.Error(err))
+		return err
+	}
+
+	*dest = result
+	d.logger.Debug("loaded metrics")
+	return nil
+}
+
+func (d *DBDumper) load() (result mem.Storage, err error) {
+	db := d.db
+
 	if !d.migrationUp {
-		if err := upMigration(db); err != nil {
-			return err
+		if err = upMigration(db); err != nil {
+			return result, err
 		}
 		d.migrationUp = true
 		d.logger.Debug("migration up")
@@ -48,11 +76,11 @@ func (d *DBDumper) Load(dest *mem.Storage) error {
 	rows, err := db.Query(`select "name", "type", "delta", "value" from metrics;`)
 	if err != nil {
 		d.logger.Error("fail to query metrics", zap.Error(err))
-		return err
+		return result, err
 	}
 	defer func(rows *sql.Rows) { _ = rows.Close() }(rows)
 
-	result := make(mem.Storage)
+	result = make(mem.Storage)
 
 	for rows.Next() {
 		var (
@@ -65,7 +93,7 @@ func (d *DBDumper) Load(dest *mem.Storage) error {
 		err = rows.Scan(&name, &mtype, &delta, &value)
 		if err != nil {
 			d.logger.Error("fail to scan metrics", zap.Error(err))
-			return err
+			return result, err
 		}
 
 		m := entities.Metric{
@@ -86,12 +114,10 @@ func (d *DBDumper) Load(dest *mem.Storage) error {
 	err = rows.Err()
 	if err != nil {
 		d.logger.Error("error occurred while reading rows", zap.Error(err))
-		return err
+		return result, err
 	}
 
-	*dest = result
-	d.logger.Debug("loaded metrics")
-	return nil
+	return result, nil
 }
 
 func (d *DBDumper) Dump(source mem.Storage) error {
@@ -105,33 +131,19 @@ func (d *DBDumper) Dump(source mem.Storage) error {
 
 	d.logger.Debug("dumping metrics")
 
-	tx, err := d.db.Begin()
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare(`
-		insert into metrics ("name", "type", "delta", "value") values ($1, $2, $3, $4)
-		on conflict ("name", "type")
-		    do update
-		    	set "delta" = excluded."delta",
-		    	    "value" = excluded."value";`)
-	if err != nil {
-		d.logger.Error("metric upsert query preparing failed", zap.Error(err))
-		return errors.Join(tx.Rollback(), err)
-	}
-	defer func(stmt *sql.Stmt) { _ = stmt.Close() }(stmt)
-
-	for _, v := range source {
-		_, err = stmt.Exec(v.Name, string(v.Type), v.Delta, v.Value)
-		if err != nil {
-			d.logger.Error("metric upsert failed", zap.Error(err))
-			return errors.Join(tx.Rollback(), err)
+	var err error
+	for _, t := range delays {
+		err = dump(d.logger, d.db, source)
+		var pgerr *pgconn.PgError
+		if errors.As(err, &pgerr) && pgerrcode.IsConnectionException(pgerr.Code) {
+			time.Sleep(t)
+		} else {
+			break
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
-		d.logger.Error("metric upsert commit failed", zap.Error(err))
+	if err != nil {
+		d.logger.Error("metrics dumping failed", zap.Error(err))
 		return err
 	}
 
@@ -150,4 +162,42 @@ create table if not exists metrics (
 );
 	`)
 	return err
+}
+
+func dump(
+	logger *zap.Logger,
+	db *sql.DB,
+	source mem.Storage,
+) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`
+		insert into metrics ("name", "type", "delta", "value") values ($1, $2, $3, $4)
+		on conflict ("name", "type")
+		    do update
+		    	set "delta" = excluded."delta",
+		    	    "value" = excluded."value";`)
+	if err != nil {
+		logger.Error("metric upsert query preparing failed", zap.Error(err))
+		return errors.Join(tx.Rollback(), err)
+	}
+	defer func(stmt *sql.Stmt) { _ = stmt.Close() }(stmt)
+
+	for _, v := range source {
+		_, err = stmt.Exec(v.Name, string(v.Type), v.Delta, v.Value)
+		if err != nil {
+			logger.Error("metric upsert failed", zap.Error(err))
+			return errors.Join(tx.Rollback(), err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		logger.Error("metric upsert commit failed", zap.Error(err))
+		return err
+	}
+
+	return nil
 }

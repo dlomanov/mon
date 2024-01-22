@@ -9,6 +9,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"log"
 	"strings"
+	"time"
 )
 
 type Collector struct {
@@ -18,8 +19,12 @@ type Collector struct {
 }
 
 func NewCollector(addr string, logger *log.Logger) Collector {
+	createClient(addr)
 	return Collector{
-		client:  createClient(addr),
+		client: createClient(addr).
+			SetRetryWaitTime(1 * time.Second).
+			SetRetryMaxWaitTime(5 * time.Second).
+			SetRetryCount(3),
 		metrics: make(map[string]entities.Metric),
 		logger:  logger,
 	}
