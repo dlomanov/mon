@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/dlomanov/mon/internal/storage"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
@@ -12,15 +11,13 @@ import (
 var reportTemplate = template.
 	Must(template.New("report").Parse(`{{range $val := .}}<p>{{$val}}</p>{{end}}`))
 
-func Report(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
+func Report(logger *zap.Logger, storage Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		values := db.All()
-		result := make([]string, len(values))
-		i := 0
-		for k, v := range values {
-			str := fmt.Sprintf("%s: %s\n", k, v)
-			result[i] = str
-			i++
+		values := storage.All()
+		result := make([]string, 0, len(values))
+		for _, v := range values {
+			str := fmt.Sprintf("%s: %s\n", v.String(), v.StringValue())
+			result = append(result, str)
 		}
 
 		slices.Sort(result)

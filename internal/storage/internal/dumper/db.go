@@ -3,8 +3,8 @@ package dumper
 import (
 	"database/sql"
 	"errors"
-	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/entities"
+	"github.com/dlomanov/mon/internal/storage/internal/mem"
 	"go.uber.org/zap"
 	"sync"
 )
@@ -29,9 +29,10 @@ type DBDumper struct {
 	migrationUp bool
 }
 
-func (d *DBDumper) Load(dest *map[string]string) error {
+func (d *DBDumper) Load(dest *mem.Storage) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	db := d.db
 
 	d.logger.Debug("loading metrics")
@@ -51,7 +52,7 @@ func (d *DBDumper) Load(dest *map[string]string) error {
 	}
 	defer func(rows *sql.Rows) { _ = rows.Close() }(rows)
 
-	result := make(map[string]string)
+	result := make(mem.Storage)
 
 	for rows.Next() {
 		var (
@@ -67,15 +68,12 @@ func (d *DBDumper) Load(dest *map[string]string) error {
 			return err
 		}
 
-		t, ok := entities.ParseMetricType(mtype)
-		if !ok {
-			d.logger.Error("fail to parse metric type",
-				zap.Error(err),
-				zap.String("metric_type", mtype))
-			return apperrors.ErrUnsupportedMetricType.New(mtype)
+		m := entities.Metric{
+			MetricsKey: entities.MetricsKey{
+				Name: name,
+				Type: entities.ParseMetricTypeForced(mtype),
+			},
 		}
-
-		m := entities.Metric{MetricsKey: entities.MetricsKey{Name: name, Type: t}}
 		if value.Valid {
 			m.Value = &value.Float64
 		}
@@ -83,7 +81,7 @@ func (d *DBDumper) Load(dest *map[string]string) error {
 			m.Delta = &delta.Int64
 		}
 
-		result[m.String()] = m.StringValue()
+		result[m.String()] = m
 	}
 	err = rows.Err()
 	if err != nil {
@@ -96,7 +94,7 @@ func (d *DBDumper) Load(dest *map[string]string) error {
 	return nil
 }
 
-func (d *DBDumper) Dump(source map[string]string) error {
+func (d *DBDumper) Dump(source mem.Storage) error {
 	if len(source) == 0 {
 		d.logger.Debug("nothing to dump")
 		return nil
@@ -124,20 +122,8 @@ func (d *DBDumper) Dump(source map[string]string) error {
 	}
 	defer func(stmt *sql.Stmt) { _ = stmt.Close() }(stmt)
 
-	for k, v := range source {
-		mk, err := entities.NewMetricsKey(k)
-		if err != nil {
-			d.logger.Error("metric key parsing failed", zap.Error(err))
-			return errors.Join(tx.Rollback(), err)
-		}
-
-		m, err := entities.NewMetric(mk, v)
-		if err != nil {
-			d.logger.Error("metric value parsing failed", zap.Error(err))
-			return errors.Join(tx.Rollback(), err)
-		}
-
-		_, err = stmt.Exec(m.Name, string(m.Type), m.Delta, m.Value)
+	for _, v := range source {
+		_, err = stmt.Exec(v.Name, string(v.Type), v.Delta, v.Value)
 		if err != nil {
 			d.logger.Error("metric upsert failed", zap.Error(err))
 			return errors.Join(tx.Rollback(), err)

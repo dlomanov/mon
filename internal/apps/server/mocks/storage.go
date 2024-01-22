@@ -1,49 +1,52 @@
 package mocks
 
 import (
-	"github.com/dlomanov/mon/internal/storage"
+	"github.com/dlomanov/mon/internal/apps/server/handlers"
+	"github.com/dlomanov/mon/internal/entities"
 	"sync"
 )
 
 func init() {
-	var _ storage.Storage = (*mockStorage)(nil)
+	var _ handlers.Storage = (*MockStorage)(nil)
 }
 
-func NewStorage() storage.Storage {
-	return &mockStorage{
-		mu:      sync.Mutex{},
-		storage: make(map[string]string),
+func NewStorage() *MockStorage {
+	return &MockStorage{
+		internal: make(map[string]entities.Metric),
+		mu:       sync.Mutex{},
 	}
 }
 
-type mockStorage struct {
-	mu      sync.Mutex
-	storage map[string]string
+type MockStorage struct {
+	internal map[string]entities.Metric
+	mu       sync.Mutex
 }
 
-func (m *mockStorage) All() map[string]string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (s *MockStorage) Set(metrics ...entities.Metric) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	result := make(map[string]string, len(m.storage))
-	for k, v := range m.storage {
-		result[k] = v
+	for _, v := range metrics {
+		s.internal[v.String()] = v
+	}
+}
+
+func (s *MockStorage) Get(key entities.MetricsKey) (metric entities.Metric, ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	metric, ok = s.internal[key.String()]
+	return metric, ok
+}
+
+func (s *MockStorage) All() []entities.Metric {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result := make([]entities.Metric, 0, len(s.internal))
+	for _, v := range s.internal {
+		result = append(result, v)
 	}
 
 	return result
-}
-
-func (m *mockStorage) Set(key, value string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.storage[key] = value
-}
-
-func (m *mockStorage) Get(key string) (value string, ok bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	v, ok := m.storage[key]
-	return v, ok
 }

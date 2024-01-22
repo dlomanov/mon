@@ -2,6 +2,8 @@ package dumper
 
 import (
 	"encoding/json"
+	"github.com/dlomanov/mon/internal/entities"
+	"github.com/dlomanov/mon/internal/storage/internal/mem"
 	"go.uber.org/zap"
 	"io"
 	"os"
@@ -32,7 +34,7 @@ type FileDumper struct {
 	mu       sync.Mutex
 }
 
-func (f *FileDumper) Load(dest *map[string]string) error {
+func (f *FileDumper) Load(dest *mem.Storage) error {
 	if !f.restore {
 		f.logger.Debug("load disabled")
 		return nil
@@ -52,8 +54,8 @@ func (f *FileDumper) Load(dest *map[string]string) error {
 	}
 	defer func(file *os.File) { _ = file.Close() }(file)
 
-	m := make(map[string]string)
-	data := pair{}
+	m := make(mem.Storage)
+	data := metric{}
 	dec := json.NewDecoder(file)
 
 	for {
@@ -63,10 +65,22 @@ func (f *FileDumper) Load(dest *map[string]string) error {
 		if err != nil {
 			return err
 		}
-		m[data.Key] = data.Value
+
+		entity := entities.Metric{
+			MetricsKey: entities.MetricsKey{
+				Name: data.Name,
+				Type: entities.ParseMetricTypeForced(data.Type),
+			},
+			Value: data.Value,
+			Delta: data.Delta,
+		}
+		key := entity.String()
+
+		m[key] = entity
+
 		f.logger.Debug("- load metric",
-			zap.String("key", data.Key),
-			zap.String("value", data.Value))
+			zap.String("key", key),
+			zap.String("value", entity.StringValue()))
 	}
 
 	*dest = m
@@ -74,7 +88,7 @@ func (f *FileDumper) Load(dest *map[string]string) error {
 	return nil
 }
 
-func (f *FileDumper) Dump(source map[string]string) error {
+func (f *FileDumper) Dump(source mem.Storage) error {
 	if len(source) == 0 {
 		f.logger.Debug("nothing to dump")
 		return nil
@@ -92,24 +106,34 @@ func (f *FileDumper) Dump(source map[string]string) error {
 
 	enc := json.NewEncoder(file)
 	for k, v := range source {
-		data := pair{Key: k, Value: v}
+		data := metric{
+			Name:  v.Name,
+			Type:  string(v.Type),
+			Delta: v.Delta,
+			Value: v.Value,
+		}
+		valueStr := v.StringValue()
+
 		err = enc.Encode(data)
 		if err != nil {
 			f.logger.Error("failed to encode metric",
 				zap.String("key", k),
-				zap.String("value", v))
+				zap.String("value", valueStr))
 			return err
 		}
+
 		f.logger.Debug("- dump metric",
-			zap.String("key", data.Key),
-			zap.String("value", data.Value))
+			zap.String("key", k),
+			zap.String("value", valueStr))
 	}
 
 	f.logger.Debug("metrics dumped")
 	return nil
 }
 
-type pair struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+type metric struct {
+	Name  string   `json:"name"`
+	Type  string   `json:"type"`
+	Delta *int64   `json:"delta,omitempty"`
+	Value *float64 `json:"value,omitempty"`
 }

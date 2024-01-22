@@ -7,12 +7,11 @@ import (
 	"github.com/dlomanov/mon/internal/apps/apimodels"
 	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
 	"github.com/dlomanov/mon/internal/entities"
-	"github.com/dlomanov/mon/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
 )
 
-func UpdateByParams(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
+func UpdateByParams(logger *zap.Logger, db Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metrics, err := bind.FromRouteParams(r)
 		if err != nil {
@@ -39,7 +38,7 @@ func UpdateByParams(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
 	}
 }
 
-func UpdateByJSON(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
+func UpdateByJSON(logger *zap.Logger, db Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metrics, err := bind.FromJSON(r)
 		if err != nil {
@@ -72,7 +71,7 @@ func UpdateByJSON(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
 	}
 }
 
-func handle(entity entities.Metric, db storage.Storage) (processed entities.Metric, err error) {
+func handle(entity entities.Metric, db Storage) (processed entities.Metric, err error) {
 	switch entity.Type {
 	case entities.MetricGauge:
 		processed, err = HandleGauge(entity, db)
@@ -109,26 +108,21 @@ func statusCode(err error) int {
 	}
 }
 
-func HandleGauge(metric entities.Metric, db storage.Storage) (entities.Metric, error) {
-	db.Set(metric.MetricsKey.String(), metric.StringValue())
+func HandleGauge(metric entities.Metric, db Storage) (entities.Metric, error) {
+	db.Set(metric)
 	return metric, nil
 }
 
-func HandleCounter(metric entities.Metric, db storage.Storage) (entities.Metric, error) {
-	key := metric.MetricsKey.String()
+func HandleCounter(metric entities.Metric, db Storage) (entities.Metric, error) {
+	key := metric.MetricsKey
 
-	value, ok := db.Get(key)
+	old, ok := db.Get(key)
 	if !ok {
-		db.Set(key, metric.StringValue())
+		db.Set(metric)
 		return metric, nil
 	}
 
-	old, err := metric.CloneWith(value)
-	if err != nil {
-		return entities.Metric{}, err
-	}
-
 	*metric.Delta += *old.Delta
-	db.Set(key, metric.StringValue())
+	db.Set(metric)
 	return metric, nil
 }

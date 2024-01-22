@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"github.com/dlomanov/mon/internal/apperrors"
 	"strings"
 )
 
@@ -13,6 +14,14 @@ const (
 
 func (t MetricType) IsValid() bool {
 	return t == MetricGauge || t == MetricCounter
+}
+
+func ParseMetricTypeForced(str string) MetricType {
+	value, ok := ParseMetricType(str)
+	if !ok {
+		panic(apperrors.ErrUnsupportedMetricType.New(str))
+	}
+	return value
 }
 
 func ParseMetricType(str string) (value MetricType, ok bool) {

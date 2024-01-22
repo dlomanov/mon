@@ -3,15 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"github.com/dlomanov/mon/internal/apps/apimodels"
-	"github.com/dlomanov/mon/internal/entities"
-	"github.com/dlomanov/mon/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
 
-func GetByParams(logger *zap.Logger, stg storage.Storage) http.HandlerFunc {
+func GetByParams(logger *zap.Logger, stg Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := apimodels.MetricKey{
 			Name: chi.URLParam(r, "name"),
@@ -25,20 +23,20 @@ func GetByParams(logger *zap.Logger, stg storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		value, ok := stg.Get(entityKey.String())
+		entity, ok := stg.Get(entityKey)
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
 
-		_, err = w.Write([]byte(value))
+		_, err = w.Write([]byte(entity.StringValue()))
 		if err != nil {
 			logger.Error("error occurred during response writing", zap.Error(err))
 		}
 	}
 }
 
-func GetByJSON(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
+func GetByJSON(logger *zap.Logger, db Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h := r.Header.Get(HeaderContentType); !strings.HasPrefix(h, "application/json") {
 			logger.Debug("invalid content-type", zap.String(HeaderContentType, h))
@@ -61,17 +59,9 @@ func GetByJSON(logger *zap.Logger, db storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		value, ok := db.Get(entityKey.String())
+		entity, ok := db.Get(entityKey)
 		if !ok {
 			http.NotFound(w, r)
-			return
-		}
-
-		entity := entities.Metric{MetricsKey: entityKey}
-		entity, err = entity.CloneWith(value)
-		if err != nil {
-			logger.Error("error occurred", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 

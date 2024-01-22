@@ -34,7 +34,7 @@ func Run(cfg Config) error {
 	defer func(db *sql.DB) { _ = db.Close() }(db)
 
 	stg := container.MemStorage
-	defer func(stg *storage.MemStorage) { _ = stg.Close() }(stg)
+	defer func(stg *storage.Storage) { _ = stg.Close() }(stg)
 
 	logger.Info("server running...", zap.String("cfg", cfgStr))
 
@@ -89,7 +89,7 @@ func catchTerminate(
 
 func dumpLoop(
 	ctx context.Context,
-	stg *storage.MemStorage,
+	stg *storage.Storage,
 	logger *zap.Logger,
 ) {
 	err := stg.DumpLoop(ctx)
