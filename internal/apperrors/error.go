@@ -4,10 +4,6 @@ import (
 	"fmt"
 )
 
-func init() {
-	var _ error = (*AppError)(nil)
-}
-
 type AppError struct {
 	Type       AppErrorType
 	Message    string

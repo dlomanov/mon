@@ -1,36 +1,36 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/apps/apimodels"
 	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
-	"github.com/dlomanov/mon/internal/apps/server/handlers/interfaces"
 	"github.com/dlomanov/mon/internal/entities"
 	"go.uber.org/zap"
 	"net/http"
 )
 
-func UpdateByParams(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
+func (c *Container) UpdateByParams() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric, err := bind.MetricFromRouteParams(r)
 		if err != nil {
-			logger.Error("error occurred during model binding", zap.Error(err))
+			c.Logger.Error("error occurred during model binding", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
 		entity, err := apimodels.MapToEntity(metric)
 		if err != nil {
-			logger.Error("error occurred during model mapping", zap.Error(err))
+			c.Logger.Error("error occurred during model mapping", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		_, err = handle(db, false, entity)
+		_, err = handle(r.Context(), c.Storage, false, entity)
 		if err != nil {
-			logger.Error("error occurred during metric update", zap.Error(err))
+			c.Logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
@@ -39,25 +39,25 @@ func UpdateByParams(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc 
 	}
 }
 
-func UpdatesByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
+func (c *Container) UpdatesByJSON() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metrics, err := bind.MetricsFromJSON(r)
 		if err != nil {
-			logger.Error("error occurred during model binding", zap.Error(err))
+			c.Logger.Error("error occurred during model binding", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
 		values, err := apimodels.MapToEntities(metrics)
 		if err != nil {
-			logger.Error("error occurred during model mapping", zap.Error(err))
+			c.Logger.Error("error occurred during model mapping", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		_, err = handle(db, false, values...)
+		_, err = handle(r.Context(), c.Storage, false, values...)
 		if err != nil {
-			logger.Error("error occurred during metric update", zap.Error(err))
+			c.Logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
@@ -66,25 +66,25 @@ func UpdatesByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 	}
 }
 
-func UpdateByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
+func (c *Container) UpdateByJSON() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric, err := bind.MetricFromJSON(r)
 		if err != nil {
-			logger.Error("error occurred during model binding", zap.Error(err))
+			c.Logger.Error("error occurred during model binding", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
 		entity, err := apimodels.MapToEntity(metric)
 		if err != nil {
-			logger.Error("error occurred during model mapping", zap.Error(err))
+			c.Logger.Error("error occurred during model mapping", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		processed, err := handle(db, true, entity)
+		processed, err := handle(r.Context(), c.Storage, true, entity)
 		if err != nil {
-			logger.Error("error occurred during metric update", zap.Error(err))
+			c.Logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
@@ -92,7 +92,7 @@ func UpdateByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 		w.Header().Set(HeaderContentType, "application/json")
 		err = json.NewEncoder(w).Encode(apimodels.MapToModel(processed[0]))
 		if err != nil {
-			logger.Error("error occurred during response writing", zap.Error(err))
+			c.Logger.Error("error occurred during response writing", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -100,7 +100,8 @@ func UpdateByJSON(logger *zap.Logger, db interfaces.Storage) http.HandlerFunc {
 }
 
 func handle(
-	db interfaces.Storage,
+	ctx context.Context,
+	storage Storage,
 	needResult bool,
 	metrics ...entities.Metric,
 ) (processedMetrics []entities.Metric, err error) {
@@ -110,9 +111,9 @@ func handle(
 		var processed entities.Metric
 		switch entity.Type {
 		case entities.MetricGauge:
-			processed, err = HandleGauge(entity, db)
+			processed, err = HandleGauge(ctx, entity, storage)
 		case entities.MetricCounter:
-			processed, err = HandleCounter(entity, db)
+			processed, err = HandleCounter(ctx, entity, storage)
 		default:
 			err = apperrors.ErrUnsupportedMetricType.New(entity.Type)
 		}
@@ -152,21 +153,28 @@ func statusCode(err error) int {
 	}
 }
 
-func HandleGauge(metric entities.Metric, db interfaces.Storage) (entities.Metric, error) {
-	db.Set(metric)
-	return metric, nil
+func HandleGauge(
+	ctx context.Context,
+	metric entities.Metric,
+	storage Storage,
+) (entities.Metric, error) {
+	err := storage.Set(ctx, metric)
+	return metric, err
 }
 
-func HandleCounter(metric entities.Metric, db interfaces.Storage) (entities.Metric, error) {
-	key := metric.MetricsKey
-
-	old, ok := db.Get(key)
-	if !ok {
-		db.Set(metric)
-		return metric, nil
+func HandleCounter(
+	ctx context.Context,
+	metric entities.Metric,
+	storage Storage,
+) (result entities.Metric, err error) {
+	old, ok, err := storage.Get(ctx, metric.MetricsKey)
+	if err != nil {
+		return result, err
 	}
 
-	*metric.Delta += *old.Delta
-	db.Set(metric)
-	return metric, nil
+	if ok {
+		*metric.Delta += *old.Delta
+	}
+
+	return metric, storage.Set(ctx, metric)
 }

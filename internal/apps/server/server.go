@@ -2,12 +2,9 @@ package server
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/dlomanov/mon/internal/apps/server/handlers"
 	"github.com/dlomanov/mon/internal/apps/server/middlewares"
-	"github.com/dlomanov/mon/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
@@ -23,48 +20,33 @@ func Run(cfg Config) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	container, err := configureServices(ctx, cfg)
+	container, err := handlers.NewContainer(ctx, cfg.Config)
 	if err != nil {
 		return err
 	}
+	defer func(container *handlers.Container) { _ = container.Close() }(container)
 
 	logger := container.Logger
-
-	db := container.DB
-	defer func(db *sql.DB) { _ = db.Close() }(db)
-
-	stg := container.MemStorage
-	defer func(stg *storage.Storage) { _ = stg.Close() }(stg)
-
 	logger.Info("server running...", zap.String("cfg", cfgStr))
-
 	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(container)}
-	go dumpLoop(ctx, stg, logger)
-	go catchTerminate(server, logger, func() {
-		cancel()
-		_ = stg.Close()
-		_ = db.Close()
-	})
+	go catchTerminate(server, logger, func() { cancel() })
 	return server.ListenAndServe()
 }
 
-func createRouter(container *serviceContainer) *chi.Mux {
-	ctx := container.Context
+func createRouter(container *handlers.Container) *chi.Mux {
 	logger := container.Logger
-	stg := container.Storage
-	db := container.DB
 
 	router := chi.NewRouter()
 	router.Use(middlewares.Logger(logger))
 	router.Use(middlewares.Compressor)
 	router.Use(middleware.Recoverer)
-	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(logger, stg))
-	router.Post("/update/", handlers.UpdateByJSON(logger, stg))
-	router.Post("/updates/", handlers.UpdatesByJSON(logger, stg))
-	router.Get("/value/{type}/{name}", handlers.GetByParams(logger, stg))
-	router.Post("/value/", handlers.GetByJSON(logger, stg))
-	router.Get("/ping", handlers.PingDB(ctx, logger, db))
-	router.Get("/", handlers.Report(logger, stg))
+	router.Post("/update/{type}/{name}/{value}", container.UpdateByParams())
+	router.Post("/update/", container.UpdateByJSON())
+	router.Post("/updates/", container.UpdatesByJSON())
+	router.Get("/value/{type}/{name}", container.GetByParams())
+	router.Post("/value/", container.GetByJSON())
+	router.Get("/ping", container.PingDB())
+	router.Get("/", container.Report())
 
 	return router
 }
@@ -86,19 +68,4 @@ func catchTerminate(
 
 	err := server.Shutdown(context.Background())
 	logger.Error("Error from shutdown", zap.Error(err))
-}
-
-func dumpLoop(
-	ctx context.Context,
-	stg *storage.Storage,
-	logger *zap.Logger,
-) {
-	err := stg.DumpLoop(ctx)
-	if errors.Is(err, context.Canceled) {
-		logger.Debug("dump loop cancelled", zap.Error(err))
-		return
-	}
-	if err != nil {
-		logger.Error("failed dump loop", zap.Error(err))
-	}
 }

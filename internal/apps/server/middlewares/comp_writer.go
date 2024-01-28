@@ -7,11 +7,6 @@ import (
 	"strings"
 )
 
-func init() {
-	var _ http.ResponseWriter = (*compressWriter)(nil)
-	var _ io.Closer = (*compressWriter)(nil)
-}
-
 func newCompressWriter(w http.ResponseWriter, allowedTypes map[string]struct{}) *compressWriter {
 	return &compressWriter{
 		w:            w,

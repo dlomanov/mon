@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -10,19 +9,19 @@ import (
 
 const timeout = 5 * time.Second
 
-func PingDB(ctx context.Context, logger *zap.Logger, db *sql.DB) http.HandlerFunc {
+func (c *Container) PingDB() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+		timeoutCtx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 
-		if db == nil {
-			logger.Debug("DB is not configured")
+		if c.DB == nil {
+			c.Logger.Debug("DB is not configured")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if err := db.PingContext(timeoutCtx); err != nil {
-			logger.Error("failed ping to DB", zap.Error(err))
+		if err := c.DB.PingContext(timeoutCtx); err != nil {
+			c.Logger.Error("failed ping to DB", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

@@ -10,19 +10,10 @@ import (
 	"sync"
 )
 
-func init() {
-	var _ Dumper = (*FileDumper)(nil)
-}
-
-func NewFileDumper(
-	logger *zap.Logger,
-	filePath string,
-	restore bool,
-) *FileDumper {
+func NewFileDumper(logger *zap.Logger, filePath string) *FileDumper {
 	return &FileDumper{
 		logger:   logger,
 		filePath: filePath,
-		restore:  restore,
 		mu:       sync.Mutex{},
 	}
 }
@@ -35,11 +26,6 @@ type FileDumper struct {
 }
 
 func (f *FileDumper) Load(dest *mem.Storage) error {
-	if !f.restore {
-		f.logger.Debug("load disabled")
-		return nil
-	}
-
 	f.mu.Lock()
 	defer f.mu.Unlock()
 

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/caarlos0/env/v10"
 	"github.com/dlomanov/mon/internal/apps/server"
+	"github.com/dlomanov/mon/internal/apps/server/handlers"
 	"time"
 )
 
@@ -33,11 +34,13 @@ func getConfig() server.Config {
 	}
 
 	return server.Config{
-		Addr:            raw.Addr,
-		LogLevel:        raw.LogLevel,
-		StoreInterval:   time.Duration(raw.StoreInterval) * time.Second,
-		FileStoragePath: raw.FileStoragePath,
-		Restore:         raw.Restore,
-		DatabaseDSN:     raw.DatabaseDSN,
+		Addr: raw.Addr,
+		Config: handlers.Config{
+			LogLevel:        raw.LogLevel,
+			StoreInterval:   time.Duration(raw.StoreInterval) * time.Second,
+			FileStoragePath: raw.FileStoragePath,
+			Restore:         raw.Restore,
+			DatabaseDSN:     raw.DatabaseDSN,
+		},
 	}
 }
