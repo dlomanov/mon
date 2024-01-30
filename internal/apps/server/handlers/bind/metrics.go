@@ -19,7 +19,7 @@ const (
 	ErrInvalidMetricValue     = apperrors.ErrInvalidMetricValue
 )
 
-func FromRouteParams(r *http.Request) (model apimodels.Metric, err error) {
+func MetricFromRouteParams(r *http.Request) (model apimodels.Metric, err error) {
 	model.Name = chi.URLParam(r, "name")
 	model.Type = chi.URLParam(r, "type")
 	valueString := chi.URLParam(r, "value")
@@ -51,7 +51,7 @@ func FromRouteParams(r *http.Request) (model apimodels.Metric, err error) {
 	return model, nil
 }
 
-func FromJSON(r *http.Request) (model apimodels.Metric, err error) {
+func MetricFromJSON(r *http.Request) (model apimodels.Metric, err error) {
 	if h := r.Header.Get("Content-Type"); !strings.HasPrefix(h, "application/json") {
 		return model, ErrUnsupportedContentType.New(h)
 	}
@@ -61,4 +61,16 @@ func FromJSON(r *http.Request) (model apimodels.Metric, err error) {
 	}
 
 	return model, err
+}
+
+func MetricsFromJSON(r *http.Request) (models []apimodels.Metric, err error) {
+	if h := r.Header.Get("Content-Type"); !strings.HasPrefix(h, "application/json") {
+		return models, ErrUnsupportedContentType.New(h)
+	}
+	err = json.NewDecoder(r.Body).Decode(&models)
+	if err != nil {
+		err = errors.Join(ErrInvalidMetricRequest.New(), err)
+	}
+
+	return models, err
 }

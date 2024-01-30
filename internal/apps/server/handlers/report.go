@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/dlomanov/mon/internal/apps/server/logger"
-	"github.com/dlomanov/mon/internal/storage"
 	"go.uber.org/zap"
 	"html/template"
 	"net/http"
@@ -13,23 +11,26 @@ import (
 var reportTemplate = template.
 	Must(template.New("report").Parse(`{{range $val := .}}<p>{{$val}}</p>{{end}}`))
 
-func Report(db storage.Storage) http.HandlerFunc {
+func (c *Container) Report() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		values := db.All()
-		result := make([]string, len(values))
-		i := 0
-		for k, v := range values {
-			str := fmt.Sprintf("%s: %s\n", k, v)
-			result[i] = str
-			i++
+		values, err := c.Storage.All(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			c.Logger.Error("get entities failed", zap.Error(err))
+			return
 		}
 
+		result := make([]string, 0, len(values))
+		for _, v := range values {
+			str := fmt.Sprintf("%s: %s\n", v.String(), v.StringValue())
+			result = append(result, str)
+		}
 		slices.Sort(result)
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		err := reportTemplate.Execute(w, result)
+		err = reportTemplate.Execute(w, result)
 		if err != nil {
-			logger.Log.Error("error occurred", zap.String("error", err.Error()))
+			c.Logger.Error("error occurred", zap.String("error", err.Error()))
 			return
 		}
 	}

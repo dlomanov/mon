@@ -1,13 +1,11 @@
-package logger
+package logging
 
 import "go.uber.org/zap"
 
-var Log = zap.NewNop()
-
-func WithLevel(level string) error {
+func WithLevel(level string) (*zap.Logger, error) {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cfg := zap.NewProductionConfig()
@@ -15,9 +13,8 @@ func WithLevel(level string) error {
 
 	logger, err := cfg.Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	Log = logger
-	return nil
+	return logger, nil
 }

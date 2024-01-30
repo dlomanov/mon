@@ -13,6 +13,20 @@ const (
 	ErrInvalidMetricValue = apperrors.ErrInvalidMetricValue
 )
 
+func MapToEntities(models []Metric) (values []entities.Metric, err error) {
+	values = make([]entities.Metric, 0, len(models))
+
+	for _, v := range models {
+		entity, err := MapToEntity(v)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, entity)
+	}
+
+	return values, nil
+}
+
 func MapToEntity(model Metric) (entity entities.Metric, err error) {
 	key, err := MapToEntityKey(model.MetricKey)
 	if err != nil {
@@ -47,6 +61,15 @@ func MapToEntityKey(key MetricKey) (entityKey entities.MetricsKey, err error) {
 		Name: key.Name,
 		Type: metricType,
 	}, nil
+}
+
+func MapToModels(values []entities.Metric) []Metric {
+	result := make([]Metric, 0, len(values))
+	for _, v := range values {
+		result = append(result, MapToModel(v))
+	}
+
+	return result
 }
 
 func MapToModel(entity entities.Metric) Metric {

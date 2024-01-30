@@ -9,6 +9,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"log"
 	"strings"
+	"time"
 )
 
 type Collector struct {
@@ -18,8 +19,12 @@ type Collector struct {
 }
 
 func NewCollector(addr string, logger *log.Logger) Collector {
+	createClient(addr)
 	return Collector{
-		client:  createClient(addr),
+		client: createClient(addr).
+			SetRetryWaitTime(1 * time.Second).
+			SetRetryMaxWaitTime(5 * time.Second).
+			SetRetryCount(3),
 		metrics: make(map[string]entities.Metric),
 		logger:  logger,
 	}
@@ -58,42 +63,40 @@ func (c *Collector) LogUpdated() {
 }
 
 func (c *Collector) ReportMetrics() {
-	sb := strings.Builder{}
-
-	failed := 0
-	for _, v := range c.metrics {
-		model := apimodels.MapToModel(v)
-		data, err := compressJSON(model)
-		if err != nil {
-			failed++
-			writeerr(&sb, err.Error())
-			continue
-		}
-
-		_, err = c.client.
-			R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("Content-Encoding", "gzip").
-			SetHeader("Accept-Encoding", "gzip").
-			SetBody(data).
-			Post("/update/")
-
-		if err != nil {
-			failed++
-			writeerr(&sb, err.Error())
-		}
-	}
-
-	if failed == 0 {
-		c.logger.Printf("%d metrics reported\n", len(c.metrics))
+	if len(c.metrics) == 0 {
 		return
 	}
 
-	c.logger.Printf("%d metrics reported, %d failed\n%v", len(c.metrics)-failed, failed, sb.String())
+	data := make([]apimodels.Metric, 0, len(c.metrics))
+	for _, v := range c.metrics {
+		model := apimodels.MapToModel(v)
+		data = append(data, model)
+	}
+
+	dataJSON, err := compressJSON(data)
+	if err != nil {
+		c.logger.Println("failed to marshal and compress metrics")
+		return
+	}
+
+	_, err = c.client.
+		R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetHeader("Accept-Encoding", "gzip").
+		SetBody(dataJSON).
+		Post("/updates/")
+
+	if err != nil {
+		c.logger.Println("reporting metrics failed")
+		return
+	}
+
+	c.logger.Println("metrics reported")
 }
 
-func compressJSON(model apimodels.Metric) ([]byte, error) {
-	data, err := json.Marshal(model)
+func compressJSON(models []apimodels.Metric) ([]byte, error) {
+	data, err := json.Marshal(models)
 	if err != nil {
 		return nil, err
 	}
@@ -111,10 +114,4 @@ func compressJSON(model apimodels.Metric) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
-}
-
-func writeerr(sb *strings.Builder, err string) {
-	sb.WriteString(" - ")
-	sb.WriteString(err)
-	sb.WriteString("\n")
 }

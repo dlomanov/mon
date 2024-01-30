@@ -1,11 +1,8 @@
 package server
 
-import "time"
+import "github.com/dlomanov/mon/internal/apps/server/handlers"
 
 type Config struct {
-	Addr            string
-	LogLevel        string
-	StoreInterval   time.Duration
-	FileStoragePath string
-	Restore         bool
+	handlers.Config
+	Addr string
 }

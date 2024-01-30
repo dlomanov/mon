@@ -5,10 +5,6 @@ import (
 	"io"
 )
 
-func init() {
-	var _ io.ReadCloser = (*compressReader)(nil)
-}
-
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	d, err := gzip.NewReader(r)
 	return &compressReader{

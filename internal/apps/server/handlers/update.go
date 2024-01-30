@@ -1,37 +1,36 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/apps/apimodels"
 	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
-	"github.com/dlomanov/mon/internal/apps/server/logger"
 	"github.com/dlomanov/mon/internal/entities"
-	"github.com/dlomanov/mon/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
 )
 
-func UpdateByParams(db storage.Storage) http.HandlerFunc {
+func (c *Container) UpdateByParams() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metrics, err := bind.FromRouteParams(r)
+		metric, err := bind.MetricFromRouteParams(r)
 		if err != nil {
-			logger.Log.Error("error occurred during model binding", zap.Error(err))
+			c.Logger.Error("error occurred during model binding", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		entity, err := apimodels.MapToEntity(metrics)
+		entity, err := apimodels.MapToEntity(metric)
 		if err != nil {
-			logger.Log.Error("error occurred during model mapping", zap.Error(err))
+			c.Logger.Error("error occurred during model mapping", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		_, err = handle(entity, db)
+		_, err = handle(r.Context(), c.Storage, false, entity)
 		if err != nil {
-			logger.Log.Error("error occurred during metric update", zap.Error(err))
+			c.Logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
@@ -40,50 +39,94 @@ func UpdateByParams(db storage.Storage) http.HandlerFunc {
 	}
 }
 
-func UpdateByJSON(db storage.Storage) http.HandlerFunc {
+func (c *Container) UpdatesByJSON() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		metrics, err := bind.FromJSON(r)
+		metrics, err := bind.MetricsFromJSON(r)
 		if err != nil {
-			logger.Log.Error("error occurred during model binding", zap.Error(err))
+			c.Logger.Error("error occurred during model binding", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		entity, err := apimodels.MapToEntity(metrics)
+		values, err := apimodels.MapToEntities(metrics)
 		if err != nil {
-			logger.Log.Error("error occurred during model mapping", zap.Error(err))
+			c.Logger.Error("error occurred during model mapping", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
-		processed, err := handle(entity, db)
+		_, err = handle(r.Context(), c.Storage, false, values...)
 		if err != nil {
-			logger.Log.Error("error occurred during metric update", zap.Error(err))
+			c.Logger.Error("error occurred during metric update", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func (c *Container) UpdateByJSON() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metric, err := bind.MetricFromJSON(r)
+		if err != nil {
+			c.Logger.Error("error occurred during model binding", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		entity, err := apimodels.MapToEntity(metric)
+		if err != nil {
+			c.Logger.Error("error occurred during model mapping", zap.Error(err))
+			w.WriteHeader(statusCode(err))
+			return
+		}
+
+		processed, err := handle(r.Context(), c.Storage, true, entity)
+		if err != nil {
+			c.Logger.Error("error occurred during metric update", zap.Error(err))
 			w.WriteHeader(statusCode(err))
 			return
 		}
 
 		w.Header().Set(HeaderContentType, "application/json")
-		err = json.NewEncoder(w).Encode(apimodels.MapToModel(processed))
+		err = json.NewEncoder(w).Encode(apimodels.MapToModel(processed[0]))
 		if err != nil {
-			logger.Log.Error("error occurred during response writing", zap.Error(err))
+			c.Logger.Error("error occurred during response writing", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
 }
 
-func handle(entity entities.Metric, db storage.Storage) (processed entities.Metric, err error) {
-	switch entity.Type {
-	case entities.MetricGauge:
-		processed, err = HandleGauge(entity, db)
-	case entities.MetricCounter:
-		processed, err = HandleCounter(entity, db)
-	default:
-		err = apperrors.ErrUnsupportedMetricType.New(entity.Type)
+func handle(
+	ctx context.Context,
+	storage Storage,
+	needResult bool,
+	metrics ...entities.Metric,
+) (processedMetrics []entities.Metric, err error) {
+	processedMetrics = make([]entities.Metric, 0)
+
+	for _, entity := range metrics {
+		var processed entities.Metric
+		switch entity.Type {
+		case entities.MetricGauge:
+			processed, err = HandleGauge(ctx, entity, storage)
+		case entities.MetricCounter:
+			processed, err = HandleCounter(ctx, entity, storage)
+		default:
+			err = apperrors.ErrUnsupportedMetricType.New(entity.Type)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if needResult {
+			processedMetrics = append(processedMetrics, processed)
+		}
 	}
 
-	return processed, err
+	return processedMetrics, nil
 }
 
 func statusCode(err error) int {
@@ -110,26 +153,28 @@ func statusCode(err error) int {
 	}
 }
 
-func HandleGauge(metric entities.Metric, db storage.Storage) (entities.Metric, error) {
-	db.Set(metric.MetricsKey.String(), metric.StringValue())
-	return metric, nil
+func HandleGauge(
+	ctx context.Context,
+	metric entities.Metric,
+	storage Storage,
+) (entities.Metric, error) {
+	err := storage.Set(ctx, metric)
+	return metric, err
 }
 
-func HandleCounter(metric entities.Metric, db storage.Storage) (entities.Metric, error) {
-	key := metric.MetricsKey.String()
-
-	value, ok := db.Get(key)
-	if !ok {
-		db.Set(key, metric.StringValue())
-		return metric, nil
-	}
-
-	old, err := metric.CloneWith(value)
+func HandleCounter(
+	ctx context.Context,
+	metric entities.Metric,
+	storage Storage,
+) (result entities.Metric, err error) {
+	old, ok, err := storage.Get(ctx, metric.MetricsKey)
 	if err != nil {
-		return entities.Metric{}, err
+		return result, err
 	}
 
-	*metric.Delta += *old.Delta
-	db.Set(key, metric.StringValue())
-	return metric, nil
+	if ok {
+		*metric.Delta += *old.Delta
+	}
+
+	return metric, storage.Set(ctx, metric)
 }
