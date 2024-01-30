@@ -1,10 +1,8 @@
-package handlers
+package container
 
 import (
 	"context"
 	"errors"
-	"time"
-
 	"github.com/dlomanov/mon/internal/apps/server/logging"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage"
@@ -14,23 +12,10 @@ import (
 	"io"
 )
 
-const (
-	HeaderContentType = "Content-Type"
-)
-
 type Storage interface {
 	Set(ctx context.Context, metrics ...entities.Metric) error
 	Get(ctx context.Context, key entities.MetricsKey) (metric entities.Metric, ok bool, err error)
 	All(ctx context.Context) (result []entities.Metric, err error)
-}
-
-type Config struct {
-	LogLevel        string
-	StoreInterval   time.Duration
-	FileStoragePath string
-	Restore         bool
-	DatabaseDSN     string
-	Key             string
 }
 
 func NewContainer(
@@ -57,6 +42,7 @@ func NewContainer(
 		Logger:  logger,
 		DB:      db,
 		Storage: s,
+		Config:  cfg,
 	}, nil
 }
 
@@ -65,6 +51,7 @@ type Container struct {
 	DB      *sqlx.DB
 	Logger  *zap.Logger
 	Storage Storage
+	Config  Config
 }
 
 func (c *Container) Close() (err error) {

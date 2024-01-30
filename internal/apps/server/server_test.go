@@ -2,7 +2,7 @@ package server
 
 import (
 	"bytes"
-	"github.com/dlomanov/mon/internal/apps/server/handlers"
+	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -196,7 +196,7 @@ func TestServer(t *testing.T) {
 	}
 
 	stg := mocks.NewStorage()
-	r := createRouter(&handlers.Container{
+	r := createRouter(&container.Container{
 		Storage: stg,
 		Logger:  zap.NewNop(),
 		Context: nil,
@@ -249,7 +249,7 @@ func TestServer_UpdatesByJSON(t *testing.T) {
 	}
 
 	stg := mocks.NewStorage()
-	r := createRouter(&handlers.Container{
+	r := createRouter(&container.Container{
 		Storage: stg,
 		Logger:  zap.NewNop(),
 		Context: nil,

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/dlomanov/mon/internal/apps/server/container"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -9,7 +10,7 @@ import (
 
 const timeout = 5 * time.Second
 
-func (c *Container) PingDB() http.HandlerFunc {
+func PingDB(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		timeoutCtx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()

@@ -109,7 +109,6 @@ func (c *Collector) ReportMetrics() {
 }
 
 func compress(dataJSON []byte) ([]byte, error) {
-
 	buf := bytes.Buffer{}
 	cw := gzip.NewWriter(&buf)
 

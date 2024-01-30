@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/handlers"
 	"github.com/dlomanov/mon/internal/apps/server/middlewares"
 	"github.com/go-chi/chi/v5"
@@ -20,33 +21,34 @@ func Run(cfg Config) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	container, err := handlers.NewContainer(ctx, cfg.Config)
+	c, err := container.NewContainer(ctx, cfg.Config)
 	if err != nil {
 		return err
 	}
-	defer func(container *handlers.Container) { _ = container.Close() }(container)
+	defer func(c *container.Container) { _ = c.Close() }(c)
 
-	logger := container.Logger
+	logger := c.Logger
 	logger.Info("server running...", zap.String("cfg", cfgStr))
-	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(container)}
+	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(c)}
 	go catchTerminate(server, logger, func() { cancel() })
 	return server.ListenAndServe()
 }
 
-func createRouter(container *handlers.Container) *chi.Mux {
+func createRouter(container *container.Container) *chi.Mux {
 	logger := container.Logger
 
 	router := chi.NewRouter()
+	router.Use(middleware.Recoverer)
 	router.Use(middlewares.Logger(logger))
 	router.Use(middlewares.Compressor)
-	router.Use(middleware.Recoverer)
-	router.Post("/update/{type}/{name}/{value}", container.UpdateByParams())
-	router.Post("/update/", container.UpdateByJSON())
-	router.Post("/updates/", container.UpdatesByJSON())
-	router.Get("/value/{type}/{name}", container.GetByParams())
-	router.Post("/value/", container.GetByJSON())
-	router.Get("/ping", container.PingDB())
-	router.Get("/", container.Report())
+	router.Use(middlewares.Hash(container))
+	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(container))
+	router.Post("/update/", handlers.UpdateByJSON(container))
+	router.Post("/updates/", handlers.UpdatesByJSON(container))
+	router.Get("/value/{type}/{name}", handlers.GetByParams(container))
+	router.Post("/value/", handlers.GetByJSON(container))
+	router.Get("/ping", handlers.PingDB(container))
+	router.Get("/", handlers.Report(container))
 
 	return router
 }
