@@ -11,6 +11,7 @@ type rawConfig struct {
 	Addr           string `env:"ADDRESS"`
 	PollInterval   uint64 `env:"POLL_INTERVAL"`
 	ReportInterval uint64 `env:"REPORT_INTERVAL"`
+	Key            string `env:"KEY"`
 }
 
 func (r rawConfig) toConfig() agent.Config {
@@ -18,6 +19,7 @@ func (r rawConfig) toConfig() agent.Config {
 		Addr:           r.Addr,
 		PollInterval:   time.Duration(r.PollInterval) * time.Second,
 		ReportInterval: time.Duration(r.ReportInterval) * time.Second,
+		Key:            r.Key,
 	}
 }
 
@@ -27,6 +29,7 @@ func getConfig() agent.Config {
 	flag.StringVar(&raw.Addr, "a", "localhost:8080", "server address")
 	flag.Uint64Var(&raw.PollInterval, "p", 2, "metrics poll interval in seconds")
 	flag.Uint64Var(&raw.ReportInterval, "r", 10, "metrics poll interval in seconds")
+	flag.StringVar(&raw.Key, "k", "", "hashing key")
 	flag.Parse()
 
 	err := env.Parse(&raw)
