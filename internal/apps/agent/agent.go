@@ -10,7 +10,7 @@ import (
 )
 
 func Run(cfg Config) (err error) {
-	m := collector.NewCollector(cfg.Addr, log.Default())
+	m := collector.NewCollector(cfg.Addr, cfg.Key, log.Default())
 	reportTime := time.Now().Add(cfg.ReportInterval)
 
 	for i := 0; i < math.MaxInt64; i++ {

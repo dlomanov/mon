@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/dlomanov/mon/internal/apps/apimodels"
+	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
+	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/go-resty/resty/v2"
 	"log"
@@ -16,9 +17,10 @@ type Collector struct {
 	metrics map[string]entities.Metric
 	logger  *log.Logger
 	client  *resty.Client
+	hashKey string
 }
 
-func NewCollector(addr string, logger *log.Logger) Collector {
+func NewCollector(addr string, hashKey string, logger *log.Logger) Collector {
 	createClient(addr)
 	return Collector{
 		client: createClient(addr).
@@ -27,6 +29,7 @@ func NewCollector(addr string, logger *log.Logger) Collector {
 			SetRetryCount(3),
 		metrics: make(map[string]entities.Metric),
 		logger:  logger,
+		hashKey: hashKey,
 	}
 }
 
@@ -73,18 +76,28 @@ func (c *Collector) ReportMetrics() {
 		data = append(data, model)
 	}
 
-	dataJSON, err := compressJSON(data)
+	dataJSON, err := json.Marshal(data)
 	if err != nil {
-		c.logger.Println("failed to marshal and compress metrics")
+		c.logger.Println("marshaling failed")
 		return
 	}
 
-	_, err = c.client.
-		R().
+	compressedJSON, err := compress(dataJSON)
+	if err != nil {
+		c.logger.Println("compression failed")
+		return
+	}
+
+	request := c.client.R()
+	if c.hashKey != "" {
+		hash := hashing.ComputeBase64URLHash(c.hashKey, dataJSON)
+		request = request.SetHeader(hashing.HeaderHash, hash)
+	}
+	_, err = request.
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Accept-Encoding", "gzip").
-		SetBody(dataJSON).
+		SetBody(compressedJSON).
 		Post("/updates/")
 
 	if err != nil {
@@ -95,16 +108,12 @@ func (c *Collector) ReportMetrics() {
 	c.logger.Println("metrics reported")
 }
 
-func compressJSON(models []apimodels.Metric) ([]byte, error) {
-	data, err := json.Marshal(models)
-	if err != nil {
-		return nil, err
-	}
+func compress(dataJSON []byte) ([]byte, error) {
 
 	buf := bytes.Buffer{}
 	cw := gzip.NewWriter(&buf)
 
-	_, err = cw.Write(data)
+	_, err := cw.Write(dataJSON)
 	if err != nil {
 		return nil, err
 	}
