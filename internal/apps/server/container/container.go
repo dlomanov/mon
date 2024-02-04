@@ -3,7 +3,7 @@ package container
 import (
 	"context"
 	"errors"
-	"github.com/dlomanov/mon/internal/apps/server/logging"
+	"github.com/dlomanov/mon/internal/apps/shared/logging"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"

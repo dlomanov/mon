@@ -4,6 +4,8 @@ import (
 	"flag"
 	"github.com/caarlos0/env/v10"
 	"github.com/dlomanov/mon/internal/apps/agent"
+	"github.com/dlomanov/mon/internal/apps/agent/collector"
+	"github.com/dlomanov/mon/internal/apps/agent/reporter"
 	"time"
 )
 
@@ -12,14 +14,22 @@ type rawConfig struct {
 	PollInterval   uint64 `env:"POLL_INTERVAL"`
 	ReportInterval uint64 `env:"REPORT_INTERVAL"`
 	Key            string `env:"KEY"`
+	RateLimit      uint64 `env:"RATE_LIMIT"`
+	LogLevel       string `env:"LOG_LEVEL"`
 }
 
 func (r rawConfig) toConfig() agent.Config {
 	return agent.Config{
-		Addr:           r.Addr,
-		PollInterval:   time.Duration(r.PollInterval) * time.Second,
-		ReportInterval: time.Duration(r.ReportInterval) * time.Second,
-		Key:            r.Key,
+		CollectorConfig: collector.Config{
+			PollInterval:   time.Duration(r.PollInterval) * time.Second,
+			ReportInterval: time.Duration(r.ReportInterval) * time.Second,
+		},
+		ReporterConfig: reporter.Config{
+			Addr:      r.Addr,
+			Key:       r.Key,
+			RateLimit: r.RateLimit,
+		},
+		LogLevel: r.LogLevel,
 	}
 }
 
@@ -28,8 +38,10 @@ func getConfig() agent.Config {
 
 	flag.StringVar(&raw.Addr, "a", "localhost:8080", "server address")
 	flag.Uint64Var(&raw.PollInterval, "p", 2, "metrics poll interval in seconds")
-	flag.Uint64Var(&raw.ReportInterval, "r", 10, "metrics poll interval in seconds")
+	flag.Uint64Var(&raw.ReportInterval, "r", 10, "metrics report interval in seconds")
 	flag.StringVar(&raw.Key, "k", "", "hashing key")
+	flag.Uint64Var(&raw.RateLimit, "l", 2, "report rate limit")
+	flag.StringVar(&raw.LogLevel, "log_level", "info", "log level")
 	flag.Parse()
 
 	err := env.Parse(&raw)
