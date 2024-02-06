@@ -61,6 +61,8 @@ func (r *Reporter) Enqueue(metrics map[string]entities.Metric) {
 
 func (r *Reporter) StartWorkers(ctx context.Context) {
 	worker := func(number uint64) {
+		defer r.logger.Debug("worker stopped", zap.Uint64("worker_number", number), zap.Error(ctx.Err()))
+
 		for ctx.Err() == nil {
 			select {
 			case <-ctx.Done():
@@ -74,7 +76,6 @@ func (r *Reporter) StartWorkers(ctx context.Context) {
 				r.logger.Debug("metric reported", zap.Uint64("worker_number", number))
 			}
 		}
-		r.logger.Debug("worker stopped", zap.Uint64("worker_number", number), zap.Error(ctx.Err()))
 	}
 
 	for i := uint64(0); i < r.workerCount; i++ {
