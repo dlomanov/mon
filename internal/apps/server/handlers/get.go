@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/dlomanov/mon/internal/apps/apimodels"
+	"github.com/dlomanov/mon/internal/apps/server/container"
+	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
 )
 
-func (c *Container) GetByParams() http.HandlerFunc {
+func GetByParams(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := apimodels.MetricKey{
 			Name: chi.URLParam(r, "name"),
@@ -41,7 +42,7 @@ func (c *Container) GetByParams() http.HandlerFunc {
 	}
 }
 
-func (c *Container) GetByJSON() http.HandlerFunc {
+func GetByJSON(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h := r.Header.Get(HeaderContentType); !strings.HasPrefix(h, "application/json") {
 			c.Logger.Debug("invalid content-type", zap.String(HeaderContentType, h))

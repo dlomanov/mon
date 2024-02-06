@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dlomanov/mon/internal/apperrors"
-	"github.com/dlomanov/mon/internal/apps/apimodels"
+	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/go-chi/chi/v5"
 	"net/http"

@@ -1,8 +1,8 @@
 package server
 
-import "github.com/dlomanov/mon/internal/apps/server/handlers"
+import "github.com/dlomanov/mon/internal/apps/server/container"
 
 type Config struct {
-	handlers.Config
+	container.Config
 	Addr string
 }

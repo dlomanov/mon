@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dlomanov/mon/internal/apperrors"
-	"github.com/dlomanov/mon/internal/apps/apimodels"
+	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
+	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/dlomanov/mon/internal/entities"
 	"go.uber.org/zap"
 	"net/http"
 )
 
-func (c *Container) UpdateByParams() http.HandlerFunc {
+func UpdateByParams(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric, err := bind.MetricFromRouteParams(r)
 		if err != nil {
@@ -39,7 +40,7 @@ func (c *Container) UpdateByParams() http.HandlerFunc {
 	}
 }
 
-func (c *Container) UpdatesByJSON() http.HandlerFunc {
+func UpdatesByJSON(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metrics, err := bind.MetricsFromJSON(r)
 		if err != nil {
@@ -66,7 +67,7 @@ func (c *Container) UpdatesByJSON() http.HandlerFunc {
 	}
 }
 
-func (c *Container) UpdateByJSON() http.HandlerFunc {
+func UpdateByJSON(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric, err := bind.MetricFromJSON(r)
 		if err != nil {
@@ -101,7 +102,7 @@ func (c *Container) UpdateByJSON() http.HandlerFunc {
 
 func handle(
 	ctx context.Context,
-	storage Storage,
+	storage container.Storage,
 	needResult bool,
 	metrics ...entities.Metric,
 ) (processedMetrics []entities.Metric, err error) {
@@ -156,7 +157,7 @@ func statusCode(err error) int {
 func HandleGauge(
 	ctx context.Context,
 	metric entities.Metric,
-	storage Storage,
+	storage container.Storage,
 ) (entities.Metric, error) {
 	err := storage.Set(ctx, metric)
 	return metric, err
@@ -165,7 +166,7 @@ func HandleGauge(
 func HandleCounter(
 	ctx context.Context,
 	metric entities.Metric,
-	storage Storage,
+	storage container.Storage,
 ) (result entities.Metric, err error) {
 	old, ok, err := storage.Get(ctx, metric.MetricsKey)
 	if err != nil {

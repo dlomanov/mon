@@ -1,9 +1,12 @@
 package agent
 
-import "time"
+import (
+	"github.com/dlomanov/mon/internal/apps/agent/collector"
+	"github.com/dlomanov/mon/internal/apps/agent/reporter"
+)
 
 type Config struct {
-	Addr           string
-	PollInterval   time.Duration
-	ReportInterval time.Duration
+	CollectorConfig collector.Config
+	ReporterConfig  reporter.Config
+	LogLevel        string
 }

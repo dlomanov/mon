@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/caarlos0/env/v10"
 	"github.com/dlomanov/mon/internal/apps/server"
-	"github.com/dlomanov/mon/internal/apps/server/handlers"
+	"github.com/dlomanov/mon/internal/apps/server/container"
 	"time"
 )
 
@@ -15,6 +15,7 @@ type rawConfig struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
 }
 
 func getConfig() server.Config {
@@ -26,6 +27,7 @@ func getConfig() server.Config {
 	flag.StringVar(&raw.FileStoragePath, "f", "/tmp/metrics-db.json", "file storage path")
 	flag.BoolVar(&raw.Restore, "r", true, "restore metrics from file at server start")
 	flag.StringVar(&raw.DatabaseDSN, "d", "", "database DSN")
+	flag.StringVar(&raw.Key, "k", "", "hashing key")
 	flag.Parse()
 
 	err := env.Parse(&raw)
@@ -35,12 +37,13 @@ func getConfig() server.Config {
 
 	return server.Config{
 		Addr: raw.Addr,
-		Config: handlers.Config{
+		Config: container.Config{
 			LogLevel:        raw.LogLevel,
 			StoreInterval:   time.Duration(raw.StoreInterval) * time.Second,
 			FileStoragePath: raw.FileStoragePath,
 			Restore:         raw.Restore,
 			DatabaseDSN:     raw.DatabaseDSN,
+			Key:             raw.Key,
 		},
 	}
 }

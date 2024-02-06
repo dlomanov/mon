@@ -4,7 +4,7 @@ import (
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log"
+	"go.uber.org/zap"
 	"testing"
 )
 
@@ -30,7 +30,7 @@ func TestCollector_UpdateGauge(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := make(map[string]entities.Metric, 1)
-			c := Collector{metrics: storage, logger: log.Default()}
+			c := Collector{Metrics: storage, logger: zap.NewNop()}
 
 			for _, value := range tt.args.values {
 				c.UpdateGauge(tt.args.name, value)
@@ -66,7 +66,7 @@ func TestCollector_UpdateCounter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := make(map[string]entities.Metric, 1)
-			c := Collector{metrics: storage, logger: log.Default()}
+			c := Collector{Metrics: storage, logger: zap.NewNop()}
 
 			for _, value := range tt.args.values {
 				c.UpdateCounter(tt.args.name, value)
