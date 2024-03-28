@@ -2,12 +2,13 @@ package dumper
 
 import (
 	"encoding/json"
-	"github.com/dlomanov/mon/internal/entities"
-	"github.com/dlomanov/mon/internal/storage/internal/mem"
-	"go.uber.org/zap"
 	"io"
 	"os"
 	"sync"
+
+	"github.com/dlomanov/mon/internal/entities"
+	"github.com/dlomanov/mon/internal/storage/internal/mem"
+	"go.uber.org/zap"
 )
 
 func NewFileDumper(logger *zap.Logger, filePath string) *FileDumper {
@@ -29,7 +30,7 @@ func (f *FileDumper) Load(dest *mem.Storage) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	file, err := os.OpenFile(f.filePath, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(f.filePath, os.O_RDONLY, 0o666)
 	if os.IsNotExist(err) {
 		f.logger.Debug("file doesn't exist", zap.Error(err))
 		return nil
@@ -78,7 +79,7 @@ func (f *FileDumper) Dump(source mem.Storage) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	file, err := os.OpenFile(f.filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(f.filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o666)
 	if err != nil {
 		f.logger.Error("failed to open file", zap.Error(err))
 		return err

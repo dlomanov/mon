@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/jmoiron/sqlx"
@@ -133,7 +134,6 @@ create table if not exists metrics (
     primary key ("name", "type")
 );
 	`)
-
 	if err != nil {
 		ps.logger.Error("migration failed", zap.Error(err))
 		return err

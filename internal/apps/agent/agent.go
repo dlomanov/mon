@@ -2,14 +2,15 @@ package agent
 
 import (
 	"context"
-	"github.com/dlomanov/mon/internal/apps/agent/jobs"
-	"github.com/dlomanov/mon/internal/apps/agent/reporter"
-	"github.com/dlomanov/mon/internal/apps/shared/logging"
-	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/dlomanov/mon/internal/apps/agent/jobs"
+	"github.com/dlomanov/mon/internal/apps/agent/reporter"
+	"github.com/dlomanov/mon/internal/apps/shared/logging"
+	"go.uber.org/zap"
 )
 
 const terminateTimeout = time.Second * 3

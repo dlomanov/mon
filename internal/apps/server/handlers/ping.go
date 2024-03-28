@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
-	"github.com/dlomanov/mon/internal/apps/server/container"
-	"go.uber.org/zap"
 	"net/http"
 	"time"
+
+	"github.com/dlomanov/mon/internal/apps/server/container"
+	"go.uber.org/zap"
 )
 
 const timeout = 5 * time.Second

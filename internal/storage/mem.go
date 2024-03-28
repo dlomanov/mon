@@ -2,9 +2,10 @@ package storage
 
 import (
 	"context"
+	"sync"
+
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage/internal/mem"
-	"sync"
 )
 
 func NewMemStorage() *MemStorage {

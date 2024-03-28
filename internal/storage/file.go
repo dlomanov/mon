@@ -2,12 +2,13 @@ package storage
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage/internal/dumper"
 	"github.com/dlomanov/mon/internal/storage/internal/mem"
 	"go.uber.org/zap"
-	"sync"
-	"time"
 )
 
 type FileStorageConfig struct {

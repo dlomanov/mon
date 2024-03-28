@@ -1,8 +1,9 @@
 package entities
 
 import (
-	"github.com/dlomanov/mon/internal/apperrors"
 	"strings"
+
+	"github.com/dlomanov/mon/internal/apperrors"
 )
 
 type MetricType string

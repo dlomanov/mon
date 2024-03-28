@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/dlomanov/mon/internal/apps/server/container"
-	"go.uber.org/zap"
 	"html/template"
 	"net/http"
 	"slices"
+
+	"github.com/dlomanov/mon/internal/apps/server/container"
+	"go.uber.org/zap"
 )
 
 var reportTemplate = template.

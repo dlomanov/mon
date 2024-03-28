@@ -2,15 +2,16 @@ package jobs
 
 import (
 	"context"
-	"github.com/dlomanov/mon/internal/apps/agent/collector"
-	"github.com/dlomanov/mon/internal/entities"
-	"github.com/shirou/gopsutil/v3/mem"
-	"go.uber.org/zap"
 	"log"
 	"math"
 	"math/rand"
 	"runtime"
 	"time"
+
+	"github.com/dlomanov/mon/internal/apps/agent/collector"
+	"github.com/dlomanov/mon/internal/entities"
+	"github.com/shirou/gopsutil/v3/mem"
+	"go.uber.org/zap"
 )
 
 type Report func(map[string]entities.Metric)
