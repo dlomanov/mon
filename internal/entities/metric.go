@@ -3,9 +3,10 @@ package entities
 import (
 	"errors"
 	"fmt"
-	"github.com/dlomanov/mon/internal/apperrors"
 	"strconv"
 	"strings"
+
+	"github.com/dlomanov/mon/internal/apperrors"
 )
 
 type Metric struct {

@@ -3,11 +3,12 @@ package middlewares
 import (
 	"bytes"
 	"errors"
+	"io"
+	"net/http"
+
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"go.uber.org/zap"
-	"io"
-	"net/http"
 )
 
 func Hash(c *container.Container) func(http.Handler) http.Handler {

@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"net/http"
+	"strings"
+
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
-	"net/http"
-	"strings"
 )
 
 func GetByParams(c *container.Container) http.HandlerFunc {

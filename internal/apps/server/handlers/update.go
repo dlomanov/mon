@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
 	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/dlomanov/mon/internal/entities"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 func UpdateByParams(c *container.Container) http.HandlerFunc {

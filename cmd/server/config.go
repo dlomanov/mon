@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
+	"time"
+
 	"github.com/caarlos0/env/v10"
 	"github.com/dlomanov/mon/internal/apps/server"
 	"github.com/dlomanov/mon/internal/apps/server/container"
-	"time"
 )
 
 type rawConfig struct {
