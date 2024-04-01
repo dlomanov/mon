@@ -11,6 +11,17 @@ import (
 	"go.uber.org/zap"
 )
 
+// PGStorage is a storage system that uses a PostgreSQL database for persistence.
+// It provides methods for storing, retrieving, and managing metrics.
+type PGStorage struct {
+	logger      *zap.Logger
+	db          *sqlx.DB
+	migrationUp bool
+}
+
+// NewPGStorage creates a new PGStorage instance with the given logger and database connection.
+// It initializes the storage with data from the database if the migration is up.
+// Returns an error if the storage cannot be initialized.
 func NewPGStorage(
 	ctx context.Context,
 	logger *zap.Logger,
@@ -26,12 +37,8 @@ func NewPGStorage(
 	return ps, err
 }
 
-type PGStorage struct {
-	logger      *zap.Logger
-	db          *sqlx.DB
-	migrationUp bool
-}
-
+// Get retrieves a metric by its key from the PGStorage.
+// Returns the metric, a boolean indicating if the metric was found, or an error if the operation fails.
 func (ps *PGStorage) Get(
 	ctx context.Context,
 	key entities.MetricsKey,
@@ -56,6 +63,8 @@ func (ps *PGStorage) Get(
 	return result, true, nil
 }
 
+// All retrieves all metrics stored in the PGStorage.
+// Returns a slice of metrics or an error if the operation fails.
 func (ps *PGStorage) All(ctx context.Context) (result []entities.Metric, err error) {
 	var metrics []metric
 
@@ -80,6 +89,8 @@ func (ps *PGStorage) All(ctx context.Context) (result []entities.Metric, err err
 	return result, err
 }
 
+// Set sets one or more metrics in the PGStorage.
+// Returns an error if the operation fails.
 func (ps *PGStorage) Set(ctx context.Context, metrics ...entities.Metric) error {
 	if len(metrics) == 0 {
 		return nil

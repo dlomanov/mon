@@ -13,12 +13,30 @@ import (
 	"go.uber.org/zap"
 )
 
-type Storage interface {
-	Set(ctx context.Context, metrics ...entities.Metric) error
-	Get(ctx context.Context, key entities.MetricsKey) (metric entities.Metric, ok bool, err error)
-	All(ctx context.Context) (result []entities.Metric, err error)
-}
+type (
+	// Container is a struct that holds the application's context (database connection, logger, configuration, etc).
+	// It serves as a central place for managing dependencies and
+	// configuration across the application.
+	Container struct {
+		Context context.Context
+		DB      *sqlx.DB
+		Logger  *zap.Logger
+		Storage Storage
+		Config  Config
+	}
 
+	// Storage is an interface that defines methods for storing and retrieving metrics.
+	// Implementations of this interface can use different storage backends, such as
+	// in-memory storage, file storage, or a database.
+	Storage interface {
+		Set(ctx context.Context, metrics ...entities.Metric) error
+		Get(ctx context.Context, key entities.MetricsKey) (metric entities.Metric, ok bool, err error)
+		All(ctx context.Context) (result []entities.Metric, err error)
+	}
+)
+
+// NewContainer creates a new application container with the provided configuration.
+// It initializes the application dependencies based on the configuration.
 func NewContainer(
 	ctx context.Context,
 	cfg Config,
@@ -47,14 +65,9 @@ func NewContainer(
 	}, nil
 }
 
-type Container struct {
-	Context context.Context
-	DB      *sqlx.DB
-	Logger  *zap.Logger
-	Storage Storage
-	Config  Config
-}
-
+// Close releases any resources held by the container, such as the database connection.
+// It should be called when the application is shutting down to ensure
+// that all resources are properly released.
 func (c *Container) Close() (err error) {
 	if c.DB != nil {
 		err = c.DB.Close()

@@ -1,3 +1,5 @@
+// Package bind provides functions to bind request parameters to metric models.
+// It includes methods for extracting metric data from URL parameters and JSON request bodies.
 package bind
 
 import (
@@ -20,6 +22,8 @@ const (
 	ErrInvalidMetricValue     = apperrors.ErrInvalidMetricValue
 )
 
+// MetricFromRouteParams binds metric data from URL parameters to a Metric model.
+// It parses the metric type and value from the URL and returns a Metric model.
 func MetricFromRouteParams(r *http.Request) (model apimodels.Metric, err error) {
 	model.Name = chi.URLParam(r, "name")
 	model.Type = chi.URLParam(r, "type")
@@ -52,6 +56,8 @@ func MetricFromRouteParams(r *http.Request) (model apimodels.Metric, err error) 
 	return model, nil
 }
 
+// MetricFromJSON binds metric data from a JSON request body to a Metric model.
+// It decodes the JSON body into a Metric model and returns it.
 func MetricFromJSON(r *http.Request) (model apimodels.Metric, err error) {
 	if h := r.Header.Get("Content-Type"); !strings.HasPrefix(h, "application/json") {
 		return model, ErrUnsupportedContentType.New(h)
@@ -64,6 +70,8 @@ func MetricFromJSON(r *http.Request) (model apimodels.Metric, err error) {
 	return model, err
 }
 
+// MetricsFromJSON binds multiple metric data from a JSON request body to a slice of Metric models.
+// It decodes the JSON body into a slice of Metric models and returns it.
 func MetricsFromJSON(r *http.Request) (models []apimodels.Metric, err error) {
 	if h := r.Header.Get("Content-Type"); !strings.HasPrefix(h, "application/json") {
 		return models, ErrUnsupportedContentType.New(h)

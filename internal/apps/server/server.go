@@ -1,3 +1,6 @@
+// Package server provides functionality to start and manage a web server.
+// It includes features for setting up routes, handling HTTP requests,
+// and gracefully shutting down the server.
 package server
 
 import (
@@ -16,6 +19,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// Run - starts the server with the provided configuration.
+// It wiring the dependencies, sets up the router, and starts the server.
+// It also handles graceful shutdown.
 func Run(cfg Config) error {
 	cfgStr := fmt.Sprintf("%+v", cfg)
 

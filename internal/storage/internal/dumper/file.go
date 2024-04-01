@@ -56,7 +56,7 @@ func (f *FileDumper) Load(dest *mem.Storage) error {
 		entity := entities.Metric{
 			MetricsKey: entities.MetricsKey{
 				Name: data.Name,
-				Type: entities.ParseMetricTypeForced(data.Type),
+				Type: entities.MustParseMetricType(data.Type),
 			},
 			Value: data.Value,
 			Delta: data.Delta,

@@ -8,6 +8,14 @@ import (
 	"github.com/dlomanov/mon/internal/apps/server"
 )
 
+// main is the entry point of the server application.
+// It performs the following steps:
+// 1. Loads the application configuration from environment variables or a configuration file.
+// 2. Initializes the logger with the specified log level.
+// 3. Starts an HTTP server on a specified port for profiling and debugging purposes.
+// 4. Runs the server with the loaded configuration, handling incoming requests.
+// 5. If an error occurs during the server startup or while running, it logs the error and terminates the application.
+// 6. Gracefully shuts down the server upon receiving an interrupt signal (e.g., SIGINT or SIGTERM).
 func main() {
 	cfg := getConfig()
 

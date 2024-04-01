@@ -11,12 +11,34 @@ import (
 	"go.uber.org/zap"
 )
 
-type FileStorageConfig struct {
-	StoreInterval   time.Duration
-	FileStoragePath string
-	Restore         bool
-}
+type (
+	// FileStorageConfig holds the configuration for the FileStorage.
+	// It includes settings for the store interval, file storage path,
+	// and whether to restore metrics from storage on startup
+	FileStorageConfig struct {
+		StoreInterval   time.Duration // StoreInterval defines the interval at which metrics are stored.
+		FileStoragePath string        // FileStoragePath is the path to the directory where metrics are stored in file storage.
+		Restore         bool          // Restore indicates whether to restore metrics from storage on startup.
+	}
 
+	// FileStorage is a storage system that uses files for persistence.
+	// It provides methods for storing, retrieving, and managing metrics.
+	// FileStorage uses an in-memory storage for quick access and periodically
+	// dumps the data to files for persistence.
+	FileStorage struct {
+		mu       sync.RWMutex
+		internal *mem.Storage
+		logger   *zap.Logger
+		dumper   *dumper.FileDumper
+		config   FileStorageConfig
+		syncDump bool
+		closed   bool
+	}
+)
+
+// NewFileStorage creates a new FileStorage instance with the given configuration.
+// It initializes the storage with data from the file if Restore is true.
+// Returns an error if the storage cannot be initialized.
 func NewFileStorage(logger *zap.Logger, config FileStorageConfig) (*FileStorage, error) {
 	fs := &FileStorage{
 		mu:       sync.RWMutex{},
@@ -36,26 +58,18 @@ func NewFileStorage(logger *zap.Logger, config FileStorageConfig) (*FileStorage,
 	return fs, nil
 }
 
-type FileStorage struct {
-	mu       sync.RWMutex
-	internal *mem.Storage
-	logger   *zap.Logger
-	dumper   *dumper.FileDumper
-	config   FileStorageConfig
-	syncDump bool
-	closed   bool
-}
-
+// Close ensures that any pending operations are completed and resources are released.
+// It attempts to dump the current state of the in-memory storage to the file system.
+// Returns an error if the dump operation fails.
 func (fs *FileStorage) Close() error {
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()
 	return fs.dumper.Dump(*fs.internal)
 }
 
-func (fs *FileStorage) Get(
-	_ context.Context,
-	key entities.MetricsKey,
-) (metric entities.Metric, ok bool, err error) {
+// Get retrieves a metric by its key from the FileStorage.
+// Returns the metric and a boolean indicating if the metric was found, or an error if the operation fails.
+func (fs *FileStorage) Get(ctx context.Context, key entities.MetricsKey) (metric entities.Metric, ok bool, err error) {
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()
 
@@ -67,14 +81,18 @@ func (fs *FileStorage) Get(
 	return metrics[0], true, nil
 }
 
-func (fs *FileStorage) All(_ context.Context) (result []entities.Metric, err error) {
+// All retrieves all metrics stored in the FileStorage.
+// Returns a slice of metrics or an error if the operation fails.
+func (fs *FileStorage) All(ctx context.Context) ([]entities.Metric, error) {
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()
 
 	return fs.internal.All(), nil
 }
 
-func (fs *FileStorage) Set(_ context.Context, metrics ...entities.Metric) error {
+// Set sets one or more metrics in the FileStorage.
+// Returns an error if the operation fails.
+func (fs *FileStorage) Set(ctx context.Context, metrics ...entities.Metric) error {
 	fs.mu.Lock()
 	fs.internal.Set(metrics...)
 	fs.mu.Unlock()
@@ -86,6 +104,9 @@ func (fs *FileStorage) Set(_ context.Context, metrics ...entities.Metric) error 
 	return nil
 }
 
+// DumpLoop starts a loop that periodically dumps the in-memory storage to the file system.
+// The loop runs until the provided context is canceled.
+// Returns an error if the dump operation fails or if the context is canceled.
 func (fs *FileStorage) DumpLoop(ctx context.Context) error {
 	if fs.syncDump {
 		return nil
