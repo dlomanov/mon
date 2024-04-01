@@ -22,19 +22,18 @@ import (
 // Run - starts the server with the provided configuration.
 // It wiring the dependencies, sets up the router, and starts the server.
 // It also handles graceful shutdown.
-func Run(cfg Config) error {
+func Run(ctx context.Context, cfg Config, logger *zap.Logger) error {
 	cfgStr := fmt.Sprintf("%+v", cfg)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c, err := container.NewContainer(ctx, cfg.Config)
+	c, err := container.NewContainer(ctx, logger, cfg.Config)
 	if err != nil {
 		return err
 	}
 	defer func(c *container.Container) { _ = c.Close() }(c)
 
-	logger := c.Logger
 	logger.Info("server running...", zap.String("cfg", cfgStr))
 	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(c)}
 	go catchTerminate(server, logger, func() { cancel() })

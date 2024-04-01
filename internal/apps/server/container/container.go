@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dlomanov/mon/internal/apps/shared/logging"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/dlomanov/mon/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -39,13 +38,9 @@ type (
 // It initializes the application dependencies based on the configuration.
 func NewContainer(
 	ctx context.Context,
+	logger *zap.Logger,
 	cfg Config,
 ) (*Container, error) {
-	logger, err := logging.WithLevel(cfg.LogLevel)
-	if err != nil {
-		return nil, err
-	}
-
 	db, err := createDB(ctx, cfg)
 	if err != nil {
 		return nil, err

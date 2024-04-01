@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/dlomanov/mon/internal/apps/server"
+	"github.com/dlomanov/mon/internal/apps/shared/logging"
 )
 
 // main is the entry point of the server application.
@@ -21,7 +23,12 @@ func main() {
 
 	go func() { log.Println(http.ListenAndServe("localhost:6061", nil)) }()
 
-	err := server.Run(cfg)
+	logger, err := logging.WithLevel(cfg.LogLevel)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = server.Run(context.Background(), cfg, logger)
 	if err != nil {
 		panic(err)
 	}

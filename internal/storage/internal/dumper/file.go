@@ -22,7 +22,6 @@ func NewFileDumper(logger *zap.Logger, filePath string) *FileDumper {
 type FileDumper struct {
 	logger   *zap.Logger
 	filePath string
-	restore  bool
 	mu       sync.Mutex
 }
 

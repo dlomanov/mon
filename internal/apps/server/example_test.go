@@ -3,6 +3,9 @@ package server_test
 import (
 	"fmt"
 
+	// references to handlers
+	_ "github.com/dlomanov/mon/internal/apps/server/handlers"
+
 	"github.com/go-resty/resty/v2"
 )
 
@@ -51,7 +54,7 @@ func ExampleUpdateByParams() {
 	print(response, err)
 }
 
-func ExampleGetByParam() {
+func ExampleGetByParams() {
 	client := resty.New()
 	client.SetBaseURL(host)
 	response, err := client.
