@@ -6,15 +6,16 @@ require github.com/stretchr/testify v1.9.0
 
 require (
 	github.com/caarlos0/env/v10 v10.0.0
+	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/jackc/pgx/v5 v5.5.4
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/shirou/gopsutil/v3 v3.24.1
+	github.com/testcontainers/testcontainers-go v0.29.1
+	github.com/testcontainers/testcontainers-go/modules/postgres v0.29.1
 	go.uber.org/zap v1.26.0
 )
-
-require github.com/lib/pq v1.10.9 // indirect
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -28,7 +29,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/docker v25.0.3+incompatible // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -56,8 +56,6 @@ require (
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/testcontainers/testcontainers-go v0.29.1 // indirect
-	github.com/testcontainers/testcontainers-go/modules/postgres v0.29.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
