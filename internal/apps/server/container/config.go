@@ -11,4 +11,5 @@ type Config struct {
 	Restore         bool          // Restore indicates whether to restore metrics from storage on startup.
 	DatabaseDSN     string        // DatabaseDSN is the data source name for connecting to the database.
 	Key             string        // Key is the secret key used for hashing.
+	Addr            string        // Server host and port.
 }

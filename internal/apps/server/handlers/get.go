@@ -11,17 +11,17 @@ import (
 	"go.uber.org/zap"
 )
 
-// @Summary Get metric by parameters
-// @Description Retrieves a metric by its name and type using URL parameters.
-// @ID get_metric_by_params
+// @Summary		Get metric by parameters
+// @Description	Retrieves a metric by its name and type using URL parameters.
+// @ID				get_metric_by_params
 //
-// @Produce text
-// @Param type path string true "Type of the metric"
-// @Param name path string true "Name of the metric"
+// @Produce		plain
+// @Param			type	path		string	true	"Type of the metric"
+// @Param			name	path		string	true	"Name of the metric"
 //
-// @Success 200 {object} string "Metric value"
-// @Failure 404 {object} string "Metric not found"
-// @Router /value/{type}/{name} [get]
+// @Success		200		{object}	string	"Metric value"
+// @Failure		404		{object}	string	"Metric not found"
+// @Router			/value/{type}/{name} [get]
 func GetByParams(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := apimodels.MetricKey{
@@ -54,20 +54,20 @@ func GetByParams(c *container.Container) http.HandlerFunc {
 	}
 }
 
-// @Summary Get metric by JSON
-// @Description Retrieves a metric by its name and type using a JSON request body.
-// @ID get_metric_by_json
+// @Summary		Get metric by JSON
+// @Description	Retrieves a metric by its name and type using a JSON request body.
+// @ID				get_metric_by_json
 //
-// @Accept json
-// @Produce json
+// @Accept			json
+// @Produce		json
 //
-// @Param MetricKey body apimodels.MetricKey true "Metric key"
+// @Param			request	body		apimodels.MetricKey	true	"Metric key"
 //
-// @Success 200 {object} apimodels.Metric
-// @Failure 404 {object} string "Metric not found"
-// @Failure 415 {object} string "Unsupported Media Type"
+// @Success		200		{object}	apimodels.Metric
+// @Failure		404		{object}	string	"Metric not found"
+// @Failure		415		{object}	string	"Unsupported Media Type"
 //
-// @Router /value/ [post]
+// @Router			/value/ [post]
 func GetByJSON(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h := r.Header.Get(HeaderContentType); !strings.HasPrefix(h, "application/json") {

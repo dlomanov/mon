@@ -37,7 +37,6 @@ func getConfig() server.Config {
 	}
 
 	return server.Config{
-		Addr: raw.Addr,
 		Config: container.Config{
 			LogLevel:        raw.LogLevel,
 			StoreInterval:   time.Duration(raw.StoreInterval) * time.Second,
@@ -45,6 +44,7 @@ func getConfig() server.Config {
 			Restore:         raw.Restore,
 			DatabaseDSN:     raw.DatabaseDSN,
 			Key:             raw.Key,
+			Addr:            raw.Addr,
 		},
 	}
 }
