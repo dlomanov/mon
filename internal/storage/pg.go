@@ -45,13 +45,17 @@ func (ps *PGStorage) Get(
 ) (result entities.Metric, ok bool, err error) {
 	m := metric{}
 
-	err = ps.db.GetContext(ctx, &m,
-		`select "name", "type", "delta", "value" from metrics where "name"= $1 and "type" = $2`,
-		key.Name, string(key.Type))
-	if errors.Is(err, sql.ErrNoRows) {
-		return result, false, nil
+	const query = `select "name", "type", "delta", "value" from metrics where "name"= $1 and "type" = $2`
+	row := ps.db.DB.QueryRowContext(ctx, query, key.Name, string(key.Type))
+	if err := row.Err(); err != nil {
+		return result, false, err
 	}
-	if err != nil {
+
+	err = row.Scan(&m.Name, &m.Type, &m.Delta, &m.Value)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return result, false, nil
+	case err != nil:
 		return result, false, err
 	}
 
