@@ -1,10 +1,12 @@
 package entities
 
 import (
-	"github.com/dlomanov/mon/internal/apperrors"
 	"strings"
+
+	"github.com/dlomanov/mon/internal/apperrors"
 )
 
+// MetricType represents the type of a metric.
 type MetricType string
 
 const (
@@ -16,7 +18,9 @@ func (t MetricType) IsValid() bool {
 	return t == MetricGauge || t == MetricCounter
 }
 
-func ParseMetricTypeForced(str string) MetricType {
+// MustParseMetricType attempts to parse a string into a MetricType.
+// If the string does not match any known MetricType, it panics.
+func MustParseMetricType(str string) MetricType {
 	value, ok := ParseMetricType(str)
 	if !ok {
 		panic(apperrors.ErrUnsupportedMetricType.New(str))
@@ -24,6 +28,8 @@ func ParseMetricTypeForced(str string) MetricType {
 	return value
 }
 
+// ParseMetricType attempts to parse a string into a MetricType.
+// It returns the parsed MetricType and a boolean indicating whether the parsing was successful.
 func ParseMetricType(str string) (value MetricType, ok bool) {
 	switch lower := strings.ToLower(str); lower {
 	case string(MetricGauge):

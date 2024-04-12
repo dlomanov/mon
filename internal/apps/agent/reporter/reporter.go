@@ -5,14 +5,15 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
-	"strings"
-	"sync/atomic"
-	"time"
 )
 
 type Reporter struct {

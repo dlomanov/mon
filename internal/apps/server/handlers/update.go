@@ -4,15 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/handlers/bind"
 	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/dlomanov/mon/internal/entities"
 	"go.uber.org/zap"
-	"net/http"
 )
 
+//	@Summary		Update metric by parameters
+//	@Description	Updates a metric by its name and type using URL parameters.
+//	@ID				update_metric_by_params
+//
+//	@Param			type	path		string	true	"Type of the metric"
+//	@Param			name	path		string	true	"Name of the metric"
+//	@Param			value	path		string	true	"Value of the metric"
+//
+//	@Success		200		{object}	string	"Metric updated successfully"
+//	@Failure		400		{object}	string	"Invalid metric parameters"
+//
+//	@Router			/update/{type}/{name}/{value} [post]
 func UpdateByParams(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric, err := bind.MetricFromRouteParams(r)
@@ -40,6 +53,19 @@ func UpdateByParams(c *container.Container) http.HandlerFunc {
 	}
 }
 
+//	@Summary		Update metrics by JSON
+//	@Description	Updates multiple metrics using a JSON request body.
+//	@ID				update_metrics_by_json
+//
+//	@Accept			json
+//	@Produce		json
+//
+//	@Param			metrics	body		[]apimodels.Metric	true	"Metrics to update"
+//
+//	@Success		200		{object}	string				"Metrics updated successfully"
+//	@Failure		400		{object}	string				"Invalid metrics JSON"
+//
+//	@Router			/updates/ [post]
 func UpdatesByJSON(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metrics, err := bind.MetricsFromJSON(r)
@@ -67,6 +93,19 @@ func UpdatesByJSON(c *container.Container) http.HandlerFunc {
 	}
 }
 
+//	@Summary		Update metric by JSON
+//	@Description	Updates a metric using a JSON request body.
+//	@ID				update_metric_by_json
+//
+//	@Accept			json
+//	@Produce		json
+//
+//	@Param			metric	body		apimodels.Metric	true	"Metric to update"
+//
+//	@Success		200		{object}	apimodels.Metric	"Updated metric"
+//	@Failure		400		{object}	string				"Invalid metric JSON"
+//
+//	@Router			/update/ [post]
 func UpdateByJSON(c *container.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metric, err := bind.MetricFromJSON(r)

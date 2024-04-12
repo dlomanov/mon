@@ -4,12 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+
 	"github.com/dlomanov/mon/internal/apperrors"
 	"github.com/dlomanov/mon/internal/entities"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
+// PGStorage is a storage system that uses a PostgreSQL database for persistence.
+// It provides methods for storing, retrieving, and managing metrics.
+type PGStorage struct {
+	logger      *zap.Logger
+	db          *sqlx.DB
+	migrationUp bool
+}
+
+// NewPGStorage creates a new PGStorage instance with the given logger and database connection.
+// It initializes the storage with data from the database if the migration is up.
+// Returns an error if the storage cannot be initialized.
 func NewPGStorage(
 	ctx context.Context,
 	logger *zap.Logger,
@@ -25,25 +37,25 @@ func NewPGStorage(
 	return ps, err
 }
 
-type PGStorage struct {
-	logger      *zap.Logger
-	db          *sqlx.DB
-	migrationUp bool
-}
-
+// Get retrieves a metric by its key from the PGStorage.
+// Returns the metric, a boolean indicating if the metric was found, or an error if the operation fails.
 func (ps *PGStorage) Get(
 	ctx context.Context,
 	key entities.MetricsKey,
 ) (result entities.Metric, ok bool, err error) {
 	m := metric{}
 
-	err = ps.db.GetContext(ctx, &m,
-		`select "name", "type", "delta", "value" from metrics where "name"= $1 and "type" = $2`,
-		key.Name, string(key.Type))
-	if errors.Is(err, sql.ErrNoRows) {
-		return result, false, nil
+	const query = `select "name", "type", "delta", "value" from metrics where "name"= $1 and "type" = $2`
+	row := ps.db.DB.QueryRowContext(ctx, query, key.Name, string(key.Type))
+	if err := row.Err(); err != nil {
+		return result, false, err
 	}
-	if err != nil {
+
+	err = row.Scan(&m.Name, &m.Type, &m.Delta, &m.Value)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return result, false, nil
+	case err != nil:
 		return result, false, err
 	}
 
@@ -55,6 +67,8 @@ func (ps *PGStorage) Get(
 	return result, true, nil
 }
 
+// All retrieves all metrics stored in the PGStorage.
+// Returns a slice of metrics or an error if the operation fails.
 func (ps *PGStorage) All(ctx context.Context) (result []entities.Metric, err error) {
 	var metrics []metric
 
@@ -79,6 +93,8 @@ func (ps *PGStorage) All(ctx context.Context) (result []entities.Metric, err err
 	return result, err
 }
 
+// Set sets one or more metrics in the PGStorage.
+// Returns an error if the operation fails.
 func (ps *PGStorage) Set(ctx context.Context, metrics ...entities.Metric) error {
 	if len(metrics) == 0 {
 		return nil
@@ -133,7 +149,6 @@ create table if not exists metrics (
     primary key ("name", "type")
 );
 	`)
-
 	if err != nil {
 		ps.logger.Error("migration failed", zap.Error(err))
 		return err

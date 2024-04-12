@@ -2,10 +2,24 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/dlomanov/mon/internal/apps/agent"
 )
 
+// main is the entry point of the agent application.
+// It performs the following steps:
+// 1. Loads the application configuration from environment variables or a configuration file.
+// 2. Initializes the logger with the specified log level.
+// 3. Initializes the metric collector and reporter based on the configuration.
+// 4. Runs the agent with the loaded configuration, collecting and reporting metrics.
+// 5. If an error occurs during the agent startup or while running, it logs the error and terminates the application.
+// 6. Gracefully shuts down the agent upon receiving an interrupt signal (e.g., SIGINT or SIGTERM).
 func main() {
+	go func() { log.Println(http.ListenAndServe("localhost:6060", nil)) }()
+
 	cfg := getConfig()
 	fmt.Printf("agent running...\n%+v\n\n", cfg)
 	err := agent.Run(cfg)

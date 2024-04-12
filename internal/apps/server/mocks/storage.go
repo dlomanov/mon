@@ -2,8 +2,9 @@ package mocks
 
 import (
 	"context"
-	"github.com/dlomanov/mon/internal/entities"
 	"sync"
+
+	"github.com/dlomanov/mon/internal/entities"
 )
 
 func NewStorage() *MockStorage {

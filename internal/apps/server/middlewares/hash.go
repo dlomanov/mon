@@ -3,13 +3,28 @@ package middlewares
 import (
 	"bytes"
 	"errors"
+	"io"
+	"net/http"
+
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"go.uber.org/zap"
-	"io"
-	"net/http"
 )
 
+// Hash is a middleware that validates and optionally computes a hash for HTTP requests
+// and responses.
+//
+// It checks for a predefined header (e.g., "X-Hash") in the request and
+// compares it to a computed hash based on the request body and a secret key. If the
+// header is present and the hashes match, the request is considered valid. Otherwise,
+// the middleware may respond with an error status code.
+//
+// The middleware also computes a hash for the response body and sets it in the response header.
+// This allows the client to verify the integrity of
+// the response.
+//
+// The middleware function returns a new HTTP handler that wraps the provided handler with
+// hash validation and computation functionality.
 func Hash(c *container.Container) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

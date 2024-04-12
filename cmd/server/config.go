@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
+	"time"
+
 	"github.com/caarlos0/env/v10"
 	"github.com/dlomanov/mon/internal/apps/server"
 	"github.com/dlomanov/mon/internal/apps/server/container"
-	"time"
 )
 
 type rawConfig struct {
@@ -36,7 +37,6 @@ func getConfig() server.Config {
 	}
 
 	return server.Config{
-		Addr: raw.Addr,
 		Config: container.Config{
 			LogLevel:        raw.LogLevel,
 			StoreInterval:   time.Duration(raw.StoreInterval) * time.Second,
@@ -44,6 +44,7 @@ func getConfig() server.Config {
 			Restore:         raw.Restore,
 			DatabaseDSN:     raw.DatabaseDSN,
 			Key:             raw.Key,
+			Addr:            raw.Addr,
 		},
 	}
 }

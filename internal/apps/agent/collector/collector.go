@@ -16,6 +16,7 @@ func NewCollector(logger *zap.Logger) Collector {
 		logger:  logger,
 	}
 }
+
 func (c *Collector) UpdateGauge(name string, value float64) {
 	key := entities.MetricsKey{Name: name, Type: entities.MetricGauge}
 	v := entities.Metric{MetricsKey: key, Value: &value}

@@ -1,33 +1,46 @@
+// Package server provides functionality to start and manage a web server.
+// It includes features for setting up routes, handling HTTP requests,
+// and gracefully shutting down the server.
 package server
 
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	_ "github.com/dlomanov/mon/internal/apps/server/docs"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/handlers"
 	"github.com/dlomanov/mon/internal/apps/server/middlewares"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
-func Run(cfg Config) error {
+// Run - starts the server with the provided configuration.
+// It wiring the dependencies, sets up the router, and starts the server.
+// It also handles graceful shutdown.
+//
+//	@title		mon API
+//	@version	1.0
+func Run(ctx context.Context, cfg Config, logger *zap.Logger) error {
 	cfgStr := fmt.Sprintf("%+v", cfg)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c, err := container.NewContainer(ctx, cfg.Config)
+	c, err := container.NewContainer(ctx, logger, cfg.Config)
 	if err != nil {
 		return err
 	}
 	defer func(c *container.Container) { _ = c.Close() }(c)
 
-	logger := c.Logger
 	logger.Info("server running...", zap.String("cfg", cfgStr))
 	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(c)}
 	go catchTerminate(server, logger, func() { cancel() })
@@ -42,6 +55,7 @@ func createRouter(container *container.Container) *chi.Mux {
 	router.Use(middlewares.Logger(logger))
 	router.Use(middlewares.Compressor)
 	router.Use(middlewares.Hash(container))
+	useSwagger(router, container.Config)
 	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(container))
 	router.Post("/update/", handlers.UpdateByJSON(container))
 	router.Post("/updates/", handlers.UpdatesByJSON(container))
@@ -51,6 +65,16 @@ func createRouter(container *container.Container) *chi.Mux {
 	router.Get("/", handlers.Report(container))
 
 	return router
+}
+
+func useSwagger(router *chi.Mux, cfg container.Config) {
+	url := cfg.Addr
+	if !strings.HasPrefix(url, "http") {
+		url = "http://" + url
+	}
+	router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL(url+"/swagger/doc.json"),
+	))
 }
 
 func catchTerminate(

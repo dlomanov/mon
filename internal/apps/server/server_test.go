@@ -2,16 +2,17 @@ package server
 
 import (
 	"bytes"
-	"github.com/dlomanov/mon/internal/apps/server/container"
-	"github.com/dlomanov/mon/internal/apps/server/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/dlomanov/mon/internal/apps/server/container"
+	"github.com/dlomanov/mon/internal/apps/server/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestServer(t *testing.T) {
