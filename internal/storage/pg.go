@@ -47,8 +47,8 @@ func (ps *PGStorage) Get(
 
 	const query = `select "name", "type", "delta", "value" from metrics where "name"= $1 and "type" = $2`
 	row := ps.db.DB.QueryRowContext(ctx, query, key.Name, string(key.Type))
-	if err := row.Err(); err != nil {
-		return result, false, err
+	if rerr := row.Err(); rerr != nil {
+		return result, false, rerr
 	}
 
 	err = row.Scan(&m.Name, &m.Type, &m.Delta, &m.Value)
@@ -82,7 +82,8 @@ func (ps *PGStorage) All(ctx context.Context) (result []entities.Metric, err err
 
 	result = make([]entities.Metric, 0, len(metrics))
 	for _, v := range metrics {
-		entity, err := v.toEntity()
+		var entity entities.Metric
+		entity, err = v.toEntity()
 		if err != nil {
 			return result, err
 		}
