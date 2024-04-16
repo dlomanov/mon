@@ -2,6 +2,7 @@ package mainexcheck
 
 import (
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -27,6 +28,17 @@ func run(pass *analysis.Pass) (any, error) {
 	for _, file := range pass.Files {
 		if file.Name.Name != mainIdent {
 			continue
+		}
+
+		// skip generated files with top comment with `generated``
+		comments := file.Comments
+		if len(comments) != 0 &&
+			pass.Fset.Position(comments[0].Pos()).Line < 5 &&
+			len(comments[0].List) != 0 {
+			c := strings.ToLower(file.Comments[0].List[0].Text)
+			if strings.Contains(c, "generated") {
+				continue
+			}
 		}
 
 		ast.Inspect(file, func(node ast.Node) bool {
@@ -55,9 +67,9 @@ func run(pass *analysis.Pass) (any, error) {
 				}
 
 				pass.Reportf(call.Pos(), checkerr)
-				return false
+				return true
 			})
-			return false
+			return true
 		})
 	}
 
