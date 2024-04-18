@@ -10,6 +10,7 @@ import (
 
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/mocks"
+	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -21,6 +22,18 @@ func TestServer(t *testing.T) {
 		args args
 		want want
 	}{
+		{
+			name: "set gauge",
+			args: args{
+				method:      http.MethodPost,
+				path:        "/update/gauge/key/3.0000003",
+				contentType: "application/json; charset=utf-8",
+				body:        `{"id":"key","type":"gauge","value":3.0000003}`,
+			},
+			want: want{
+				code: http.StatusOK,
+			},
+		},
 		{
 			name: "set gauge",
 			args: args{
@@ -207,7 +220,7 @@ func TestServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, body := testRequest(t, ts, tt.args)
+			resp, body := testRequest(t, ts, tt.args, "")
 			_ = resp.Body.Close()
 
 			assert.Equal(t, tt.want.code, resp.StatusCode, "Unexpected status code")
@@ -249,8 +262,12 @@ func TestServer_UpdatesByJSON(t *testing.T) {
 		},
 	}
 
+	hashKey := "test_key"
 	stg := mocks.NewStorage()
 	r := createRouter(&container.Container{
+		Config: container.Config{
+			Key: hashKey,
+		},
 		Storage: stg,
 		Logger:  zap.NewNop(),
 		Context: nil,
@@ -260,7 +277,7 @@ func TestServer_UpdatesByJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, body := testRequest(t, ts, tt.args)
+			resp, body := testRequest(t, ts, tt.args, hashKey)
 			_ = resp.Body.Close()
 
 			assert.Equal(t, tt.want.code, resp.StatusCode, "Unexpected status code")
@@ -287,6 +304,7 @@ func testRequest(
 	t *testing.T,
 	ts *httptest.Server,
 	args args,
+	hashKey string,
 ) (resp *http.Response, responsePayload string) {
 	t.Helper()
 
@@ -295,6 +313,10 @@ func testRequest(
 	require.NoError(t, err)
 	if args.contentType != "" {
 		req.Header.Set("Content-Type", args.contentType)
+	}
+	if hashKey != "" && args.body != "" {
+		hash := hashing.ComputeBase64URLHash(hashKey, []byte(args.body))
+		req.Header.Set(hashing.HeaderHash, hash)
 	}
 
 	resp, err = ts.Client().Do(req)

@@ -25,11 +25,15 @@ type Reporter struct {
 	workerCount       uint64
 }
 
-func NewReporter(cfg Config, logger *zap.Logger) *Reporter {
+func NewReporter(
+	cfg Config,
+	logger *zap.Logger,
+	client *resty.Client,
+) *Reporter {
 	return &Reporter{
 		workerCount: cfg.RateLimit,
 		workerQueue: make(chan map[string]entities.Metric, cfg.RateLimit),
-		client: createClient(cfg.Addr).
+		client: createClient(client, cfg.Addr).
 			SetRetryWaitTime(1 * time.Second).
 			SetRetryMaxWaitTime(5 * time.Second).
 			SetRetryCount(3),
@@ -38,11 +42,13 @@ func NewReporter(cfg Config, logger *zap.Logger) *Reporter {
 	}
 }
 
-func createClient(addr string) *resty.Client {
+func createClient(client *resty.Client, addr string) *resty.Client {
 	if !strings.HasPrefix(addr, "http") { // ensure protocol schema
 		addr = "http://" + addr
 	}
-	client := resty.New()
+	if client == nil {
+		client = resty.New()
+	}
 	client.SetBaseURL(addr)
 	return client
 }

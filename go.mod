@@ -10,6 +10,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/jackc/pgx/v5 v5.5.4
+	github.com/jarcoal/httpmock v1.3.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/shirou/gopsutil/v3 v3.24.2
 	github.com/testcontainers/testcontainers-go v0.29.1

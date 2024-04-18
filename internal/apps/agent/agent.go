@@ -24,7 +24,7 @@ func Run(cfg Config) (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	r := reporter.NewReporter(cfg.ReporterConfig, logger)
+	r := reporter.NewReporter(cfg.ReporterConfig, logger, nil)
 	defer r.Close()
 	r.StartWorkers(ctx)
 
