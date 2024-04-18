@@ -9,6 +9,12 @@ import (
 	"github.com/dlomanov/mon/internal/apps/agent"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
 // main is the entry point of the agent application.
 // It performs the following steps:
 // 1. Loads the application configuration from environment variables or a configuration file.
@@ -18,6 +24,10 @@ import (
 // 5. If an error occurs during the agent startup or while running, it logs the error and terminates the application.
 // 6. Gracefully shuts down the agent upon receiving an interrupt signal (e.g., SIGINT or SIGTERM).
 func main() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n\n", buildCommit)
+
 	go func() { log.Println(http.ListenAndServe("localhost:6060", nil)) }()
 
 	cfg := getConfig()
