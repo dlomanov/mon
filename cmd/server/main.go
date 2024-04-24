@@ -2,12 +2,19 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/dlomanov/mon/internal/apps/server"
 	"github.com/dlomanov/mon/internal/apps/shared/logging"
+)
+
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
 )
 
 // main is the entry point of the server application.
@@ -19,6 +26,10 @@ import (
 // 5. If an error occurs during the server startup or while running, it logs the error and terminates the application.
 // 6. Gracefully shuts down the server upon receiving an interrupt signal (e.g., SIGINT or SIGTERM).
 func main() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n\n", buildCommit)
+
 	cfg := getConfig()
 
 	go func() { log.Println(http.ListenAndServe("localhost:6061", nil)) }()
