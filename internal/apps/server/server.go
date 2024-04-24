@@ -54,6 +54,7 @@ func createRouter(container *container.Container) *chi.Mux {
 	router.Use(middleware.Recoverer)
 	router.Use(middlewares.Logger(logger))
 	router.Use(middlewares.Compressor)
+	router.Use(middlewares.Decrypter(logger, container.Dec))
 	router.Use(middlewares.Hash(container))
 	useSwagger(router, container.Config)
 	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(container))

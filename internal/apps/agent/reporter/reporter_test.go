@@ -10,6 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -23,7 +24,8 @@ func TestReporter(t *testing.T) {
 		RateLimit: 1,
 	}
 	client := resty.New()
-	r := reporter.NewReporter(cfg, zaptest.NewLogger(t), client)
+	r, err := reporter.NewReporter(cfg, zaptest.NewLogger(t), client)
+	require.NoError(t, err)
 	defer r.Close()
 
 	httpmock.ActivateNonDefault(client.GetClient())

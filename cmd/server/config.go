@@ -17,6 +17,7 @@ type rawConfig struct {
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
+	PrivateKeyPath  string `env:"CRYPTO_KEY"`
 }
 
 func getConfig() server.Config {
@@ -29,6 +30,7 @@ func getConfig() server.Config {
 	flag.BoolVar(&raw.Restore, "r", true, "restore metrics from file at server start")
 	flag.StringVar(&raw.DatabaseDSN, "d", "", "database DSN")
 	flag.StringVar(&raw.Key, "k", "", "hashing key")
+	flag.StringVar(&raw.PrivateKeyPath, "crypto-key", `C:\Users\loman\temp\private.pem`, "private key PEM path")
 	flag.Parse()
 
 	err := env.Parse(&raw)
@@ -45,6 +47,7 @@ func getConfig() server.Config {
 			DatabaseDSN:     raw.DatabaseDSN,
 			Key:             raw.Key,
 			Addr:            raw.Addr,
+			PrivateKeyPath:  raw.PrivateKeyPath,
 		},
 	}
 }

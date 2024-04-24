@@ -17,6 +17,7 @@ type rawConfig struct {
 	Key            string `env:"KEY"`
 	RateLimit      uint64 `env:"RATE_LIMIT"`
 	LogLevel       string `env:"LOG_LEVEL"`
+	PublicKeyPath  string `env:"CRYPTO_KEY"`
 }
 
 func (r rawConfig) toConfig() agent.Config {
@@ -26,9 +27,10 @@ func (r rawConfig) toConfig() agent.Config {
 			ReportInterval: time.Duration(r.ReportInterval) * time.Second,
 		},
 		ReporterConfig: reporter.Config{
-			Addr:      r.Addr,
-			Key:       r.Key,
-			RateLimit: r.RateLimit,
+			Addr:          r.Addr,
+			Key:           r.Key,
+			RateLimit:     r.RateLimit,
+			PublicKeyPath: r.PublicKeyPath,
 		},
 		LogLevel: r.LogLevel,
 	}
@@ -43,6 +45,7 @@ func getConfig() agent.Config {
 	flag.StringVar(&raw.Key, "k", "", "hashing key")
 	flag.Uint64Var(&raw.RateLimit, "l", 2, "report rate limit")
 	flag.StringVar(&raw.LogLevel, "log_level", "info", "log level")
+	flag.StringVar(&raw.PublicKeyPath, "crypto-key", "", "public key PEM path")
 	flag.Parse()
 
 	err := env.Parse(&raw)
