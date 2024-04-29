@@ -87,6 +87,7 @@ func catchTerminate(
 
 	signal.Notify(terminate,
 		syscall.SIGINT,
+		syscall.SIGQUIT,
 		syscall.SIGTERM)
 
 	s := <-terminate

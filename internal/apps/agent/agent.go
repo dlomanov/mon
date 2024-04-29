@@ -49,6 +49,7 @@ func catchTerminate(logger *zap.Logger, onTerminate func()) chan struct{} {
 
 		signal.Notify(terminate,
 			syscall.SIGINT,
+			syscall.SIGQUIT,
 			syscall.SIGTERM)
 
 		s := <-terminate
