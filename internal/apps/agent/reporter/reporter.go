@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
 	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"github.com/dlomanov/mon/internal/entities"
+	"github.com/dlomanov/mon/internal/services/encrypt"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 )
@@ -23,13 +25,19 @@ type Reporter struct {
 	workerQueue       chan map[string]entities.Metric
 	workerQueueClosed atomic.Bool
 	workerCount       uint64
+	enc               *encrypt.Encryptor
 }
 
 func NewReporter(
 	cfg Config,
 	logger *zap.Logger,
 	client *resty.Client,
-) *Reporter {
+) (*Reporter, error) {
+	enc, err := createEncryptor(cfg.PublicKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Reporter{
 		workerCount: cfg.RateLimit,
 		workerQueue: make(chan map[string]entities.Metric, cfg.RateLimit),
@@ -39,7 +47,8 @@ func NewReporter(
 			SetRetryCount(3),
 		logger:  logger,
 		hashKey: cfg.Key,
-	}
+		enc:     enc,
+	}, nil
 }
 
 func createClient(client *resty.Client, addr string) *resty.Client {
@@ -51,6 +60,21 @@ func createClient(client *resty.Client, addr string) *resty.Client {
 	}
 	client.SetBaseURL(addr)
 	return client
+}
+
+func createEncryptor(keyPath string) (enc *encrypt.Encryptor, err error) {
+	if keyPath == "" {
+		return nil, nil
+	}
+	key, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, err
+	}
+	enc, err = encrypt.NewEncryptor(key)
+	if err != nil {
+		return nil, err
+	}
+	return enc, nil
 }
 
 func (r *Reporter) Close() {
@@ -97,6 +121,7 @@ func (r *Reporter) report(ctx context.Context, metrics map[string]entities.Metri
 		return
 	}
 
+	headers := map[string]string{}
 	data := make([]apimodels.Metric, 0, len(metrics))
 	for _, v := range metrics {
 		model := apimodels.MapToModel(v)
@@ -108,24 +133,34 @@ func (r *Reporter) report(ctx context.Context, metrics map[string]entities.Metri
 		r.logger.Error("marshaling failed", zap.Error(err))
 		return
 	}
+	headers["Content-Type"] = "application/json"
 
-	compressedJSON, err := compress(dataJSON)
+	if r.hashKey != "" {
+		hash := hashing.ComputeBase64URLHash(r.hashKey, dataJSON)
+		headers[hashing.HeaderHash] = hash
+	}
+
+	encJSON, encrypted, err := r.encrypt(dataJSON)
+	if err != nil {
+		r.logger.Error("encription failed", zap.Error(err))
+		return
+	}
+	if encrypted {
+		headers["Encryption"] = ""
+	}
+
+	compressedJSON, err := compress(encJSON)
 	if err != nil {
 		r.logger.Error("compression failed", zap.Error(err))
 		return
 	}
+	headers["Content-Encoding"] = "gzip"
+	headers["Accept-Encoding"] = "gzip"
 
-	request := r.client.
+	_, err = r.client.
 		R().
-		SetContext(ctx)
-	if r.hashKey != "" {
-		hash := hashing.ComputeBase64URLHash(r.hashKey, dataJSON)
-		request = request.SetHeader(hashing.HeaderHash, hash)
-	}
-	_, err = request.
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Content-Encoding", "gzip").
-		SetHeader("Accept-Encoding", "gzip").
+		SetContext(ctx).
+		SetHeaders(headers).
 		SetBody(compressedJSON).
 		Post("/updates/")
 
@@ -151,4 +186,12 @@ func compress(dataJSON []byte) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func (r *Reporter) encrypt(input []byte) ([]byte, bool, error) {
+	if r.enc == nil {
+		return input, false, nil
+	}
+	output, err := r.enc.Encrypt(input)
+	return output, true, err
 }

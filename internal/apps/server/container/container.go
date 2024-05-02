@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 
 	"github.com/dlomanov/mon/internal/entities"
+	"github.com/dlomanov/mon/internal/services/encrypt"
 	"github.com/dlomanov/mon/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -17,11 +19,12 @@ type (
 	// It serves as a central place for managing dependencies and
 	// configuration across the application.
 	Container struct {
+		Config  Config
 		Context context.Context
 		DB      *sqlx.DB
 		Logger  *zap.Logger
 		Storage Storage
-		Config  Config
+		Dec     *encrypt.Decryptor
 	}
 
 	// Storage is an interface that defines methods for storing and retrieving metrics.
@@ -51,12 +54,18 @@ func NewContainer(
 		return nil, err
 	}
 
+	dec, err := createDecryptor(cfg.PrivateKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Container{
+		Config:  cfg,
 		Context: ctx,
 		Logger:  logger,
 		DB:      db,
 		Storage: s,
-		Config:  cfg,
+		Dec:     dec,
 	}, nil
 }
 
@@ -121,4 +130,15 @@ func createFileStorage(
 		}
 	}()
 	return fs, nil
+}
+
+func createDecryptor(keyPath string) (*encrypt.Decryptor, error) {
+	if keyPath == "" {
+		return nil, nil
+	}
+	privateKey, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, err
+	}
+	return encrypt.NewDecryptor(privateKey)
 }

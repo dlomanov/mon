@@ -24,7 +24,11 @@ func Run(cfg Config) (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	r := reporter.NewReporter(cfg.ReporterConfig, logger, nil)
+	r, err := reporter.NewReporter(cfg.ReporterConfig, logger, nil)
+	if err != nil {
+		logger.Error("failed to create reporter", zap.Error(err))
+		return err
+	}
 	defer r.Close()
 	r.StartWorkers(ctx)
 
@@ -45,6 +49,7 @@ func catchTerminate(logger *zap.Logger, onTerminate func()) chan struct{} {
 
 		signal.Notify(terminate,
 			syscall.SIGINT,
+			syscall.SIGQUIT,
 			syscall.SIGTERM)
 
 		s := <-terminate
