@@ -16,7 +16,7 @@ import (
 )
 
 type rawConfig struct {
-	Addr           string `json:"addr" env:"ADDRESS"`
+	Addr           string `json:"address" env:"ADDRESS"`
 	PollInterval   uint64 `json:"poll_interval" env:"POLL_INTERVAL"`
 	ReportInterval uint64 `json:"report_interval" env:"REPORT_INTERVAL"`
 	Key            string `json:"key" env:"KEY"`
