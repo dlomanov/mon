@@ -53,6 +53,7 @@ func createRouter(container *container.Container) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
 	router.Use(middlewares.Logger(logger))
+	router.Use(middlewares.TrustedSubnet(logger, container.Config.TrustedSubnet))
 	router.Use(middlewares.Compressor)
 	router.Use(middlewares.Decrypter(logger, container.Dec))
 	router.Use(middlewares.Hash(container))

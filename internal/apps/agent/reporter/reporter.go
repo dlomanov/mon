@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"net"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -157,13 +158,19 @@ func (r *Reporter) report(ctx context.Context, metrics map[string]entities.Metri
 	headers["Content-Encoding"] = "gzip"
 	headers["Accept-Encoding"] = "gzip"
 
+	ip, err := GetOutboundIP()
+	if err != nil {
+		r.logger.Error("get outbound ip failed", zap.Error(err))
+	} else {
+		headers["X-Real-IP"] = ip.String()
+	}
+
 	_, err = r.client.
 		R().
 		SetContext(ctx).
 		SetHeaders(headers).
 		SetBody(compressedJSON).
 		Post("/updates/")
-
 	if err != nil {
 		r.logger.Error("reporting metrics failed", zap.Error(err))
 		return
@@ -194,4 +201,14 @@ func (r *Reporter) encrypt(input []byte) ([]byte, bool, error) {
 	}
 	output, err := r.enc.Encrypt(input)
 	return output, true, err
+}
+
+func GetOutboundIP() (net.IP, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP, nil
 }

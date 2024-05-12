@@ -53,3 +53,9 @@ func TestReporter(t *testing.T) {
 	info := httpmock.GetCallCountInfo()
 	assert.Equal(t, 1, info["POST "+url])
 }
+
+func TestGetOutboundIP(t *testing.T) {
+	localAddr, err := reporter.GetOutboundIP()
+	require.NoError(t, err)
+	t.Log("IP:", localAddr)
+}

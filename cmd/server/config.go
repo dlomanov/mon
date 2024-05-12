@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -24,6 +25,7 @@ type rawConfig struct {
 	Key             string `json:"key" env:"KEY"`
 	PrivateKeyPath  string `json:"crypto_key" env:"CRYPTO_KEY"`
 	ConfigPath      string `json:"config" env:"CONFIG"`
+	TrustedSubnet   string `json:"trusted_subnet" env:"TRUSTED_SUBNET"`
 }
 
 //go:embed config.json
@@ -90,6 +92,7 @@ func (r *rawConfig) readFlags() {
 	flag.StringVar(&r.PrivateKeyPath, "crypto-key", r.PrivateKeyPath, "private key PEM path")
 	flag.StringVar(&r.ConfigPath, "config", r.ConfigPath, "config path")
 	flag.StringVar(&r.ConfigPath, "c", r.ConfigPath, "config path (shorthand)")
+	flag.StringVar(&r.TrustedSubnet, "t", r.TrustedSubnet, "trusted subtnet (CIDR)")
 	flag.Parse()
 }
 
@@ -110,16 +113,24 @@ func (r *rawConfig) print() error {
 }
 
 func (r *rawConfig) toConfig() server.Config {
-	return server.Config{
-		Config: container.Config{
-			LogLevel:        r.LogLevel,
-			StoreInterval:   time.Duration(r.StoreInterval) * time.Second,
-			FileStoragePath: r.FileStoragePath,
-			Restore:         r.Restore,
-			DatabaseDSN:     r.DatabaseDSN,
-			Key:             r.Key,
-			Addr:            r.Addr,
-			PrivateKeyPath:  r.PrivateKeyPath,
-		},
+	cfg := container.Config{
+		LogLevel:        r.LogLevel,
+		StoreInterval:   time.Duration(r.StoreInterval) * time.Second,
+		FileStoragePath: r.FileStoragePath,
+		Restore:         r.Restore,
+		DatabaseDSN:     r.DatabaseDSN,
+		Key:             r.Key,
+		Addr:            r.Addr,
+		PrivateKeyPath:  r.PrivateKeyPath,
 	}
+
+	if r.TrustedSubnet != "" {
+		_, subnet, err := net.ParseCIDR(r.TrustedSubnet)
+		if err != nil {
+			panic(err)
+		}
+		cfg.TrustedSubnet = subnet
+	}
+
+	return server.Config{Config: cfg}
 }
