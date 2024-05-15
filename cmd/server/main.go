@@ -3,18 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/dlomanov/mon/internal/infra/logging"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/dlomanov/mon/internal/apps/server"
-	"github.com/dlomanov/mon/internal/apps/shared/logging"
 )
 
 var (
-	buildVersion string = "N/A"
-	buildDate    string = "N/A"
-	buildCommit  string = "N/A"
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
 )
 
 // main is the entry point of the server application.

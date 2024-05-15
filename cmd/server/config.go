@@ -103,13 +103,12 @@ func (r *rawConfig) readEnv() {
 	}
 }
 
-func (r *rawConfig) print() error {
+func (r *rawConfig) print() {
 	cyaml, err := yaml.Marshal(r)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	fmt.Println(string(cyaml))
-	return nil
 }
 
 func (r *rawConfig) toConfig() server.Config {

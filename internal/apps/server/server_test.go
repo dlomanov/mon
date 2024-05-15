@@ -2,6 +2,10 @@ package server
 
 import (
 	"bytes"
+	httpv1 "github.com/dlomanov/mon/internal/apps/server/entrypoints/http/v1"
+	"github.com/dlomanov/mon/internal/apps/server/usecases"
+	"github.com/dlomanov/mon/internal/infra/services/hashing"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +14,6 @@ import (
 
 	"github.com/dlomanov/mon/internal/apps/server/container"
 	"github.com/dlomanov/mon/internal/apps/server/mocks"
-	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -210,10 +213,10 @@ func TestServer(t *testing.T) {
 	}
 
 	stg := mocks.NewStorage()
-	r := createRouter(&container.Container{
-		Storage: stg,
-		Logger:  zap.NewNop(),
-		Context: nil,
+	r := chi.NewRouter()
+	httpv1.UseEndpoints(r, &container.Container{
+		MetricUseCase: usecases.NewMetricUseCase(stg),
+		Logger:        zap.NewNop(),
 	})
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -264,13 +267,13 @@ func TestServer_UpdatesByJSON(t *testing.T) {
 
 	hashKey := "test_key"
 	stg := mocks.NewStorage()
-	r := createRouter(&container.Container{
+	r := chi.NewRouter()
+	httpv1.UseEndpoints(r, &container.Container{
 		Config: container.Config{
 			Key: hashKey,
 		},
-		Storage: stg,
-		Logger:  zap.NewNop(),
-		Context: nil,
+		MetricUseCase: usecases.NewMetricUseCase(stg),
+		Logger:        zap.NewNop(),
 	})
 	ts := httptest.NewServer(r)
 	defer ts.Close()

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"github.com/dlomanov/mon/internal/infra/logging"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/dlomanov/mon/internal/apps/agent/jobs"
 	"github.com/dlomanov/mon/internal/apps/agent/reporter"
-	"github.com/dlomanov/mon/internal/apps/shared/logging"
 	"go.uber.org/zap"
 )
 

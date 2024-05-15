@@ -5,96 +5,69 @@ package server
 
 import (
 	"context"
-	"fmt"
-	"net/http"
+	v1 "github.com/dlomanov/mon/internal/apps/server/entrypoints/http/v1"
+	"github.com/dlomanov/mon/internal/infra/httpserver"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
-
-	_ "github.com/dlomanov/mon/internal/apps/server/docs"
-	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"time"
 
 	"github.com/dlomanov/mon/internal/apps/server/container"
-	"github.com/dlomanov/mon/internal/apps/server/handlers"
-	"github.com/dlomanov/mon/internal/apps/server/middlewares"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 )
 
 // Run - starts the server with the provided configuration.
-// It wiring the dependencies, sets up the router, and starts the server.
+// It wires the dependencies, sets up the router, and starts the server.
 // It also handles graceful shutdown.
-//
-//	@title		mon API
-//	@version	1.0
 func Run(ctx context.Context, cfg Config, logger *zap.Logger) error {
-	cfgStr := fmt.Sprintf("%+v", cfg)
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	c, err := container.NewContainer(ctx, logger, cfg.Config)
 	if err != nil {
 		return err
 	}
-	defer func(c *container.Container) { _ = c.Close() }(c)
+	defer c.Close()
 
-	logger.Info("server running...", zap.String("cfg", cfgStr))
-	server := &http.Server{Addr: cfg.Addr, Handler: createRouter(c)}
-	go catchTerminate(server, logger, func() { cancel() })
-	return server.ListenAndServe()
+	s := startServer(c)
+	wait(ctx, c, s)
+	shutdownServer(c, s)
+
+	return nil
 }
 
-func createRouter(container *container.Container) *chi.Mux {
-	logger := container.Logger
+func startServer(c *container.Container) *httpserver.Server {
+	r := chi.NewRouter()
+	v1.UseEndpoints(r, c)
+	s := httpserver.New(r,
+		httpserver.Addr(c.Config.Addr),
+		httpserver.ShutdownTimeout(15*time.Second))
+	c.Logger.Debug("server started")
 
-	router := chi.NewRouter()
-	router.Use(middleware.Recoverer)
-	router.Use(middlewares.Logger(logger))
-	router.Use(middlewares.TrustedSubnet(logger, container.Config.TrustedSubnet))
-	router.Use(middlewares.Compressor)
-	router.Use(middlewares.Decrypter(logger, container.Dec))
-	router.Use(middlewares.Hash(container))
-	useSwagger(router, container.Config)
-	router.Post("/update/{type}/{name}/{value}", handlers.UpdateByParams(container))
-	router.Post("/update/", handlers.UpdateByJSON(container))
-	router.Post("/updates/", handlers.UpdatesByJSON(container))
-	router.Get("/value/{type}/{name}", handlers.GetByParams(container))
-	router.Post("/value/", handlers.GetByJSON(container))
-	router.Get("/ping", handlers.PingDB(container))
-	router.Get("/", handlers.Report(container))
-
-	return router
+	return s
 }
 
-func useSwagger(router *chi.Mux, cfg container.Config) {
-	url := cfg.Addr
-	if !strings.HasPrefix(url, "http") {
-		url = "http://" + url
-	}
-	router.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL(url+"/swagger/doc.json"),
-	))
-}
-
-func catchTerminate(
-	server *http.Server,
-	logger *zap.Logger,
-	onTerminate func(),
+func wait(
+	ctx context.Context,
+	c *container.Container,
+	server *httpserver.Server,
 ) {
 	terminate := make(chan os.Signal, 1)
+	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM)
 
-	signal.Notify(terminate,
-		syscall.SIGINT,
-		syscall.SIGQUIT,
-		syscall.SIGTERM)
+	select {
+	case <-ctx.Done():
+		c.Logger.Info("cached cancellation", zap.Error(ctx.Err()))
+	case s := <-terminate:
+		c.Logger.Info("cached terminate signal", zap.String("signal", s.String()))
+	case err := <-server.Notify():
+		c.Logger.Error("server notified error", zap.Error(err))
+	}
+}
 
-	s := <-terminate
-	logger.Debug("Got one of stop signals, shutting down server gracefully", zap.String("SIGNAL NAME", s.String()))
-	onTerminate()
-
-	err := server.Shutdown(context.Background())
-	logger.Error("Error from shutdown", zap.Error(err))
+func shutdownServer(c *container.Container, s *httpserver.Server) {
+	c.Logger.Debug("server shutdown")
+	if err := s.Shutdown(); err != nil {
+		c.Logger.Error("server shutdown error", zap.Error(err))
+		return
+	}
+	c.Logger.Debug("server shutdown - ok")
 }

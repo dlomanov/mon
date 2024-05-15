@@ -3,12 +3,12 @@ package container
 import (
 	"context"
 	"errors"
+	"github.com/dlomanov/mon/internal/apps/server/usecases"
+	"github.com/dlomanov/mon/internal/infra/services/encrypt"
+	storage2 "github.com/dlomanov/mon/internal/infra/storage"
 	"io"
 	"os"
 
-	"github.com/dlomanov/mon/internal/entities"
-	"github.com/dlomanov/mon/internal/services/encrypt"
-	"github.com/dlomanov/mon/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
@@ -19,21 +19,12 @@ type (
 	// It serves as a central place for managing dependencies and
 	// configuration across the application.
 	Container struct {
-		Config  Config
-		Context context.Context
-		DB      *sqlx.DB
-		Logger  *zap.Logger
-		Storage Storage
-		Dec     *encrypt.Decryptor
-	}
-
-	// Storage is an interface that defines methods for storing and retrieving metrics.
-	// Implementations of this interface can use different storage backends, such as
-	// in-memory storage, file storage, or a database.
-	Storage interface {
-		Set(ctx context.Context, metrics ...entities.Metric) error
-		Get(ctx context.Context, key entities.MetricsKey) (metric entities.Metric, ok bool, err error)
-		All(ctx context.Context) (result []entities.Metric, err error)
+		Config        Config
+		DB            *sqlx.DB
+		Logger        *zap.Logger
+		Dec           *encrypt.Decryptor
+		MetricUseCase *usecases.MetricUseCase
+		storage       usecases.Storage
 	}
 )
 
@@ -59,28 +50,32 @@ func NewContainer(
 		return nil, err
 	}
 
+	metricUC := usecases.NewMetricUseCase(s)
+
 	return &Container{
-		Config:  cfg,
-		Context: ctx,
-		Logger:  logger,
-		DB:      db,
-		Storage: s,
-		Dec:     dec,
+		Config:        cfg,
+		Logger:        logger,
+		DB:            db,
+		Dec:           dec,
+		MetricUseCase: metricUC,
+		storage:       s,
 	}, nil
 }
 
 // Close releases any resources held by the container, such as the database connection.
 // It should be called when the application is shutting down to ensure
 // that all resources are properly released.
-func (c *Container) Close() (err error) {
+func (c *Container) Close() {
+	if closer, ok := c.storage.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			c.Logger.Error("failed to close storage", zap.Error(err))
+		}
+	}
 	if c.DB != nil {
-		err = c.DB.Close()
+		if err := c.DB.Close(); err != nil {
+			c.Logger.Error("failed to close DB", zap.Error(err))
+		}
 	}
-	if closer, ok := c.Storage.(io.Closer); ok {
-		err = errors.Join(err, closer.Close())
-	}
-
-	return err
 }
 
 func createDB(ctx context.Context, cfg Config) (*sqlx.DB, error) {
@@ -95,14 +90,14 @@ func createStorage(
 	logger *zap.Logger,
 	db *sqlx.DB,
 	cfg Config,
-) (Storage, error) {
+) (usecases.Storage, error) {
 	switch {
 	case db != nil:
-		return storage.NewPGStorage(ctx, logger, db)
+		return storage2.NewPGStorage(ctx, logger, db)
 	case cfg.FileStoragePath != "":
 		return createFileStorage(ctx, logger, cfg)
 	default:
-		return storage.NewMemStorage(), nil
+		return storage2.NewMemStorage(), nil
 	}
 }
 
@@ -110,8 +105,8 @@ func createFileStorage(
 	ctx context.Context,
 	logger *zap.Logger,
 	cfg Config,
-) (*storage.FileStorage, error) {
-	fs, err := storage.NewFileStorage(logger, storage.FileStorageConfig{
+) (*storage2.FileStorage, error) {
+	fs, err := storage2.NewFileStorage(logger, storage2.FileStorageConfig{
 		StoreInterval:   cfg.StoreInterval,
 		FileStoragePath: cfg.FileStoragePath,
 		Restore:         cfg.Restore,

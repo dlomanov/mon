@@ -1,16 +1,16 @@
 package apimodels
 
 import (
-	"github.com/dlomanov/mon/internal/apperrors"
+	"fmt"
 	"github.com/dlomanov/mon/internal/entities"
+	"github.com/dlomanov/mon/internal/entities/apperrors"
 )
 
-const (
+var (
 	ErrUnsupportedMetricType = apperrors.ErrUnsupportedMetricType
-
-	ErrInvalidMetricType  = apperrors.ErrInvalidMetricType
-	ErrInvalidMetricName  = apperrors.ErrInvalidMetricName
-	ErrInvalidMetricValue = apperrors.ErrInvalidMetricValue
+	ErrInvalidMetricType     = apperrors.NewInvalid("invalid metric type")
+	ErrInvalidMetricName     = apperrors.NewInvalid("invalid metric name")
+	ErrInvalidMetricValue    = apperrors.NewInvalid("invalid metric value")
 )
 
 func MapToEntities(models []Metric) (values []entities.Metric, err error) {
@@ -40,7 +40,7 @@ func MapToEntity(model Metric) (entity entities.Metric, err error) {
 	case key.Type == entities.MetricCounter && model.Delta != nil:
 		entity.Delta = model.Delta
 	default:
-		err = ErrInvalidMetricValue.Newf("invalid value for metrics type %s", key.Type)
+		err = fmt.Errorf("%w: %s", ErrInvalidMetricValue, key.Type)
 	}
 
 	return entity, err
@@ -50,26 +50,17 @@ func MapToEntityKey(key MetricKey) (entityKey entities.MetricsKey, err error) {
 	metricType, ok := entities.ParseMetricType(key.Type)
 
 	if !ok {
-		return entityKey, ErrInvalidMetricType.Newf("unknown entity type %s", key.Type)
+		return entityKey, fmt.Errorf("%w: %s", ErrUnsupportedMetricType, key.Type)
 	}
 
 	if key.Name == "" {
-		return entityKey, ErrInvalidMetricName.Newf("empty entity name")
+		return entityKey, ErrInvalidMetricName
 	}
 
 	return entities.MetricsKey{
 		Name: key.Name,
 		Type: metricType,
 	}, nil
-}
-
-func MapToModels(values []entities.Metric) []Metric {
-	result := make([]Metric, 0, len(values))
-	for _, v := range values {
-		result = append(result, MapToModel(v))
-	}
-
-	return result
 }
 
 func MapToModel(entity entities.Metric) Metric {

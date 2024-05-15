@@ -1,0 +1,199 @@
+definitions:
+  apimodels.Metric:
+    properties:
+      delta:
+        description: Delta is the change in value for a counter metric.
+        type: integer
+      id:
+        description: Name is the unique name of the metric.
+        type: string
+      type:
+        description: Type is the type of the metric (e.g., "counter", "gauge").
+        type: string
+      value:
+        description: Value is the current value for a gauge metric.
+        type: number
+    type: object
+  apimodels.MetricKey:
+    properties:
+      id:
+        description: Name is the unique name of the metric.
+        type: string
+      type:
+        description: Type is the type of the metric (e.g., "counter", "gauge").
+        type: string
+    type: object
+info:
+  contact: { }
+  title: mon API
+  version: "1.0"
+paths:
+  /ping:
+    get:
+      description: Checks the connectivity to the database by pinging it.
+      operationId: ping_db
+      responses:
+        "200":
+          description: Database is reachable
+          schema:
+            type: string
+        "500":
+          description: Database is not reachable
+          schema:
+            type: string
+      summary: Ping the database
+  /report:
+    get:
+      description: Retrieves all metrics and generates a report in HTML format.
+      operationId: generate_report
+      produces:
+        - text/html
+      responses:
+        "200":
+          description: Report generated successfully
+          schema:
+            type: string
+        "500":
+          description: Failed to generate report
+          schema:
+            type: string
+      summary: Generate a report
+  /update/:
+    post:
+      consumes:
+        - application/json
+      description: Updates a metric using a JSON request body.
+      operationId: update_metric_by_json
+      parameters:
+        - description: Metric to update
+          in: body
+          name: metric
+          required: true
+          schema:
+            $ref: '#/definitions/apimodels.Metric'
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Updated metric
+          schema:
+            $ref: '#/definitions/apimodels.Metric'
+        "400":
+          description: Invalid metric JSON
+          schema:
+            type: string
+      summary: Update metric by JSON
+  /update/{type}/{name}/{value}:
+    post:
+      description: Updates a metric by its name and type using URL parameters.
+      operationId: update_metric_by_params
+      parameters:
+        - description: Type of the metric
+          in: path
+          name: type
+          required: true
+          type: string
+        - description: Name of the metric
+          in: path
+          name: name
+          required: true
+          type: string
+        - description: Value of the metric
+          in: path
+          name: value
+          required: true
+          type: string
+      responses:
+        "200":
+          description: Metric updated successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid metric parameters
+          schema:
+            type: string
+      summary: Update metric by parameters
+  /updates/:
+    post:
+      consumes:
+        - application/json
+      description: Updates multiple metrics using a JSON request body.
+      operationId: update_metrics_by_json
+      parameters:
+        - description: Metrics to update
+          in: body
+          name: metrics
+          required: true
+          schema:
+            items:
+              $ref: '#/definitions/apimodels.Metric'
+            type: array
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Metrics updated successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid metrics JSON
+          schema:
+            type: string
+      summary: Update metrics by JSON
+  /value/:
+    post:
+      consumes:
+        - application/json
+      description: Retrieves a metric by its name and type using a JSON request body.
+      operationId: get_metric_by_json
+      parameters:
+        - description: Metric key
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/apimodels.MetricKey'
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apimodels.Metric'
+        "404":
+          description: Metric not found
+          schema:
+            type: string
+        "415":
+          description: Unsupported Media Type
+          schema:
+            type: string
+      summary: Get metric by JSON
+  /value/{type}/{name}:
+    get:
+      description: Retrieves a metric by its name and type using URL parameters.
+      operationId: get_metric_by_params
+      parameters:
+        - description: Type of the metric
+          in: path
+          name: type
+          required: true
+          type: string
+        - description: Name of the metric
+          in: path
+          name: name
+          required: true
+          type: string
+      produces:
+        - text/plain
+      responses:
+        "200":
+          description: Metric value
+          schema:
+            type: string
+        "404":
+          description: Metric not found
+          schema:
+            type: string
+      summary: Get metric by parameters
+swagger: "2.0"

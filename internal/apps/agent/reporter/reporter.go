@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"github.com/dlomanov/mon/internal/infra/services/encrypt"
+	"github.com/dlomanov/mon/internal/infra/services/hashing"
 	"net"
 	"os"
 	"strings"
@@ -12,9 +14,7 @@ import (
 	"time"
 
 	"github.com/dlomanov/mon/internal/apps/shared/apimodels"
-	"github.com/dlomanov/mon/internal/apps/shared/hashing"
 	"github.com/dlomanov/mon/internal/entities"
-	"github.com/dlomanov/mon/internal/services/encrypt"
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 )
@@ -208,7 +208,7 @@ func GetOutboundIP() (net.IP, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func(conn net.Conn) { _ = conn.Close() }(conn)
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP, nil
 }
