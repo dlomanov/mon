@@ -5,7 +5,9 @@ package server
 
 import (
 	"context"
-	v1 "github.com/dlomanov/mon/internal/apps/server/entrypoints/http/v1"
+	grpcv1 "github.com/dlomanov/mon/internal/apps/server/entrypoints/grpc/v1"
+	httpv1 "github.com/dlomanov/mon/internal/apps/server/entrypoints/http/v1"
+	"github.com/dlomanov/mon/internal/infra/grpcserver"
 	"github.com/dlomanov/mon/internal/infra/httpserver"
 	"os"
 	"os/signal"
@@ -27,47 +29,70 @@ func Run(ctx context.Context, cfg Config, logger *zap.Logger) error {
 	}
 	defer c.Close()
 
-	s := startServer(c)
-	wait(ctx, c, s)
-	shutdownServer(c, s)
+	httpserv := startHTTPServer(c)
+	grpcserv := startGRPCServer(c)
+	wait(ctx, c, httpserv, grpcserv)
+	shutdownHTTPServer(c, httpserv)
+	shutdownGRPCServer(c, grpcserv)
 
 	return nil
 }
 
-func startServer(c *container.Container) *httpserver.Server {
+func startHTTPServer(c *container.Container) *httpserver.Server {
 	r := chi.NewRouter()
-	v1.UseEndpoints(r, c)
+	httpv1.UseEndpoints(r, c)
 	s := httpserver.New(r,
 		httpserver.Addr(c.Config.Addr),
 		httpserver.ShutdownTimeout(15*time.Second))
-	c.Logger.Debug("server started")
+	c.Logger.Debug("HTTP-server started")
+	return s
+}
 
+func startGRPCServer(c *container.Container) *grpcserver.Server {
+	s := grpcserver.New(
+		grpcserver.Addr(c.Config.GRPCAddr),
+		grpcserver.ShutdownTimeout(15*time.Second),
+		grpcv1.GetServerOptions(c),
+	)
+	grpcv1.UseServices(s, c)
+	c.Logger.Debug("gRPC-server started")
 	return s
 }
 
 func wait(
 	ctx context.Context,
 	c *container.Container,
-	server *httpserver.Server,
+	httpserv *httpserver.Server,
+	grpcserv *grpcserver.Server,
 ) {
 	terminate := make(chan os.Signal, 1)
 	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM)
-
 	select {
 	case <-ctx.Done():
 		c.Logger.Info("cached cancellation", zap.Error(ctx.Err()))
 	case s := <-terminate:
 		c.Logger.Info("cached terminate signal", zap.String("signal", s.String()))
-	case err := <-server.Notify():
-		c.Logger.Error("server notified error", zap.Error(err))
+	case err := <-httpserv.Notify():
+		c.Logger.Error("HTTP-server notified error", zap.Error(err))
+	case err := <-grpcserv.Notify():
+		c.Logger.Error("gRPC-server notified error", zap.Error(err))
 	}
 }
 
-func shutdownServer(c *container.Container, s *httpserver.Server) {
-	c.Logger.Debug("server shutdown")
+func shutdownHTTPServer(c *container.Container, s *httpserver.Server) {
+	c.Logger.Debug("HTTP-server shutdown")
 	if err := s.Shutdown(); err != nil {
-		c.Logger.Error("server shutdown error", zap.Error(err))
+		c.Logger.Error("HTTP-server shutdown error", zap.Error(err))
 		return
 	}
-	c.Logger.Debug("server shutdown - ok")
+	c.Logger.Debug("HTTP-server shutdown - ok")
+}
+
+func shutdownGRPCServer(c *container.Container, s *grpcserver.Server) {
+	c.Logger.Debug("gRPC-server shutdown")
+	if err := s.Shutdown(); err != nil {
+		c.Logger.Error("gRPC-server shutdown error", zap.Error(err))
+		return
+	}
+	c.Logger.Debug("gRPC-server shutdown - ok")
 }

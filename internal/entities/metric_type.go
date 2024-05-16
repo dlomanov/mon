@@ -10,6 +10,7 @@ import (
 type MetricType string
 
 const (
+	MetricUnknown MetricType = ""
 	MetricGauge   MetricType = "gauge"
 	MetricCounter MetricType = "counter"
 )

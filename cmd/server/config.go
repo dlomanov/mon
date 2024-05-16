@@ -17,6 +17,7 @@ import (
 
 type rawConfig struct {
 	Addr            string `json:"address" env:"ADDRESS"`
+	GRPCAddr        string `json:"grpc_address" env:"GRPC_ADDRESS"`
 	LogLevel        string `json:"log_level" env:"LOG_LEVEL"`
 	StoreInterval   uint64 `json:"store_interval" env:"STORE_INTERVAL"`
 	FileStoragePath string `json:"file_storage_path" env:"FILE_STORAGE_PATH"`
@@ -83,6 +84,7 @@ func (r *rawConfig) readConfig() {
 
 func (r *rawConfig) readFlags() {
 	flag.StringVar(&r.Addr, "a", r.Addr, "server address")
+	flag.StringVar(&r.GRPCAddr, "grpc_address", r.GRPCAddr, "gRPC-server address")
 	flag.StringVar(&r.LogLevel, "l", r.LogLevel, "log level")
 	flag.Uint64Var(&r.StoreInterval, "i", r.StoreInterval, "store interval in seconds")
 	flag.StringVar(&r.FileStoragePath, "f", r.FileStoragePath, "file storage path")
@@ -120,6 +122,7 @@ func (r *rawConfig) toConfig() server.Config {
 		DatabaseDSN:     r.DatabaseDSN,
 		Key:             r.Key,
 		Addr:            r.Addr,
+		GRPCAddr:        r.GRPCAddr,
 		PrivateKeyPath:  r.PrivateKeyPath,
 	}
 

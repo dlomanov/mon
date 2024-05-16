@@ -11,12 +11,12 @@ import (
 	"github.com/caarlos0/env/v10"
 	"github.com/dlomanov/mon/internal/apps/agent"
 	"github.com/dlomanov/mon/internal/apps/agent/collector"
-	"github.com/dlomanov/mon/internal/apps/agent/reporter"
 	"gopkg.in/yaml.v2"
 )
 
 type rawConfig struct {
 	Addr           string `json:"address" env:"ADDRESS"`
+	GRPCAddr       string `json:"grpc_address" env:"GRPC_ADDRESS"`
 	PollInterval   uint64 `json:"poll_interval" env:"POLL_INTERVAL"`
 	ReportInterval uint64 `json:"report_interval" env:"REPORT_INTERVAL"`
 	Key            string `json:"key" env:"KEY"`
@@ -81,6 +81,7 @@ func (r *rawConfig) readConfig() {
 
 func (r *rawConfig) readFlags() {
 	flag.StringVar(&r.Addr, "a", r.Addr, "server address")
+	flag.StringVar(&r.GRPCAddr, "grpc_address", r.GRPCAddr, "gRPC-server address")
 	flag.Uint64Var(&r.PollInterval, "p", r.PollInterval, "metrics poll interval in seconds")
 	flag.Uint64Var(&r.ReportInterval, "r", r.ReportInterval, "metrics report interval in seconds")
 	flag.StringVar(&r.Key, "k", r.Key, "hashing key")
@@ -114,12 +115,11 @@ func (r *rawConfig) toConfig() agent.Config {
 			PollInterval:   time.Duration(r.PollInterval) * time.Second,
 			ReportInterval: time.Duration(r.ReportInterval) * time.Second,
 		},
-		ReporterConfig: reporter.Config{
-			Addr:          r.Addr,
-			Key:           r.Key,
-			RateLimit:     r.RateLimit,
-			PublicKeyPath: r.PublicKeyPath,
-		},
-		LogLevel: r.LogLevel,
+		Addr:          r.Addr,
+		GRPCAddr:      r.GRPCAddr,
+		HashKey:       r.Key,
+		RateLimit:     r.RateLimit,
+		PublicKeyPath: r.PublicKeyPath,
+		LogLevel:      r.LogLevel,
 	}
 }
