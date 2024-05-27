@@ -1,5 +1,6 @@
 {
     "address": "localhost:8080",
+  "grpc_address": "",
     "poll_interval": 2,
     "report_interval": 10,
     "rate_limit": 2,

@@ -3,10 +3,9 @@ package entities
 import (
 	"errors"
 	"fmt"
+	"github.com/dlomanov/mon/internal/entities/apperrors"
 	"strconv"
 	"strings"
-
-	"github.com/dlomanov/mon/internal/apperrors"
 )
 
 // Metric represents a metric with a key and optional delta or value.
@@ -36,7 +35,7 @@ func NewMetric(key MetricsKey, value string) (Metric, error) {
 
 	}
 
-	return Metric{}, apperrors.ErrUnsupportedMetricType.New(key.Type)
+	return Metric{}, fmt.Errorf("%w: %s", apperrors.ErrUnsupportedMetricType, key.Type)
 }
 
 // MetricsKey is a unique identifier for a metric, consisting of a name and type.

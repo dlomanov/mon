@@ -1,15 +1,16 @@
 package entities
 
 import (
+	"fmt"
+	"github.com/dlomanov/mon/internal/entities/apperrors"
 	"strings"
-
-	"github.com/dlomanov/mon/internal/apperrors"
 )
 
 // MetricType represents the type of a metric.
 type MetricType string
 
 const (
+	MetricUnknown MetricType = ""
 	MetricGauge   MetricType = "gauge"
 	MetricCounter MetricType = "counter"
 )
@@ -23,7 +24,7 @@ func (t MetricType) IsValid() bool {
 func MustParseMetricType(str string) MetricType {
 	value, ok := ParseMetricType(str)
 	if !ok {
-		panic(apperrors.ErrUnsupportedMetricType.New(str))
+		panic(fmt.Errorf("%w: %s", apperrors.ErrUnsupportedMetricType, str))
 	}
 	return value
 }

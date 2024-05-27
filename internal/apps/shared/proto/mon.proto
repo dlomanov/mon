@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/dlomanov/mon/internal/apps/shared/proto";
+
+service MetricService {
+  rpc Update (UpdateRequest) returns (UpdateResponse);
+}
+
+message UpdateRequest {
+  repeated Metric metrics = 1;
+}
+
+message UpdateResponse {}
+
+message Metric {
+  string name = 1;
+  MetricType type = 2;
+  optional int64 delta = 3;
+  optional double value = 4;
+}
+
+enum MetricType {
+  UNKNOWN = 0;
+  COUNTER = 1;
+  GAUGE = 2;
+}
+
+
+

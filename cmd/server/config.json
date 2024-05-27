@@ -1,10 +1,12 @@
 {
     "address": "localhost:8080",
+  "grpc_address": ":9090",
     "log_level": "info",
     "store_interval": 300,
     "file_storage_path": "/tmp/metrics-db.json",
     "restore": true,
     "database_dsn": "",
     "key": "",
-    "crypto_key": ""
+    "crypto_key": "",
+    "trusted_subnet": ""
 }

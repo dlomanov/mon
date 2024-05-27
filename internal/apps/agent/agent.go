@@ -2,14 +2,16 @@ package agent
 
 import (
 	"context"
+	"github.com/dlomanov/mon/internal/apps/agent/reporter"
+	grpcclient "github.com/dlomanov/mon/internal/apps/agent/reporter/clients/grpc"
+	httpclient "github.com/dlomanov/mon/internal/apps/agent/reporter/clients/http"
+	"github.com/dlomanov/mon/internal/infra/logging"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/dlomanov/mon/internal/apps/agent/jobs"
-	"github.com/dlomanov/mon/internal/apps/agent/reporter"
-	"github.com/dlomanov/mon/internal/apps/shared/logging"
 	"go.uber.org/zap"
 )
 
@@ -24,13 +26,13 @@ func Run(cfg Config) (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	r, err := reporter.NewReporter(cfg.ReporterConfig, logger, nil)
+	rc, err := createReportClient(logger, cfg)
 	if err != nil {
-		logger.Error("failed to create reporter", zap.Error(err))
+		logger.Error("failed to create report client", zap.Error(err))
 		return err
 	}
+	r := reporter.NewReporter(logger, cfg.RateLimit, rc)
 	defer r.Close()
-	r.StartWorkers(ctx)
 
 	go jobs.CollectMetrics(ctx, cfg.CollectorConfig, logger, r.Enqueue)
 	go jobs.CollectAdvancedMetrics(ctx, cfg.CollectorConfig, logger, r.Enqueue)
@@ -58,4 +60,15 @@ func catchTerminate(logger *zap.Logger, onTerminate func()) chan struct{} {
 		time.Sleep(terminateTimeout)
 	}()
 	return done
+}
+
+func createReportClient(logger *zap.Logger, cfg Config) (reporter.Client, error) {
+	if cfg.GRPCAddr != "" {
+		return grpcclient.New(logger, cfg.GRPCAddr)
+	}
+	return httpclient.New(logger, httpclient.Config{
+		Addr:          cfg.Addr,
+		PublicKeyPath: cfg.PublicKeyPath,
+		HashKey:       cfg.HashKey,
+	}, nil)
 }

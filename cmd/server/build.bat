@@ -1,3 +1,3 @@
 swag fmt ./...
-swag init --parseDependency -d "../../internal/apps/server" -g "server.go" -o "../../internal/apps/server/docs/"
+swag init --parseDependency -d "../../internal/apps/server/entrypoints/http/v1/" -g "router.go" -o "../../internal/apps/server/entrypoints/http/v1/docs/"
 go build .
